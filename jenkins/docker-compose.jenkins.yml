@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    container_name: circleguard-jenkins
+    ports:
+      - "8090:8080"      # UI de Jenkins
+      - "50000:50000"    # Agentes remotos
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock   # Para que Jenkins pueda usar Docker
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    user: root   # Necesario para acceder a docker.sock
+
+volumes:
+  jenkins_home:

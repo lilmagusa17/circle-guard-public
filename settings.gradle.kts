@@ -25,3 +25,7 @@ include("services:circleguard-form-service")
 include("services:circleguard-file-service")
 include("services:circleguard-gateway-service")
 include("services:circleguard-dashboard-service")
+
+// Tests
+include("tests:integration")
+include("tests:e2e")

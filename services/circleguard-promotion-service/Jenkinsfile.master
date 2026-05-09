@@ -1,0 +1,11 @@
+@Library('circleguard-shared-lib') _
+
+circleguardPipeline(
+    service: 'promotion-service',
+    environment: 'master',
+    runIntegration: true,
+    runE2E: true,
+    runPerformance: true,
+    requireApproval: true,
+    generateReleaseNotes: true
+)

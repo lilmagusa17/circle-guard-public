@@ -1,0 +1,11 @@
+@Library('circleguard-shared-lib') _
+
+circleguardPipeline(
+    service: 'gateway-service',
+    environment: 'stage',
+    runIntegration: true,
+    runE2E: true,
+    runPerformance: false,
+    requireApproval: false,
+    generateReleaseNotes: false
+)

@@ -1,0 +1,17 @@
+FROM jenkins/jenkins:lts-jdk21
+
+# Pre-install plugins (evita el setup wizard manual)
+RUN jenkins-plugin-cli --plugins \
+    git \
+    workflow-aggregator \
+    docker-workflow \
+    kubernetes-cli \
+    junit \
+    jacoco \
+    pipeline-utility-steps \
+    blueocean
+
+# Instalar Docker CLI en el contenedor
+USER root
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+USER jenkins

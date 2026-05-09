@@ -30,3 +30,12 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:1.19.3")
     testImplementation("org.testcontainers:neo4j:1.19.3")
 }
+
+tasks.withType<Test> {
+    useJUnitPlatform {
+        // Excluir tests de performance del ciclo normal (correr con -Pperformance para incluirlos)
+        if (!project.hasProperty("performance")) {
+            excludeTags("performance")
+        }
+    }
+}

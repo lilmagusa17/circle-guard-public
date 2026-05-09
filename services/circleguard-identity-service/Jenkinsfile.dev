@@ -1,0 +1,11 @@
+@Library('circleguard-shared-lib') _
+
+circleguardPipeline(
+    service: 'identity-service',
+    environment: 'dev',
+    runIntegration: false,
+    runE2E: false,
+    runPerformance: false,
+    requireApproval: false,
+    generateReleaseNotes: false
+)
