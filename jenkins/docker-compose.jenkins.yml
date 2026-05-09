@@ -16,8 +16,10 @@ services:
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
       - TESTCONTAINERS_RYUK_DISABLED=true
-      - TESTCONTAINERS_HOST_OVERRIDE=host-gateway
+      - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
       - MINIKUBE_HOME=/var/jenkins_home/.minikube
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Permite que TestContainers alcance contenedores del host
     dns:
       - 8.8.8.8
       - 8.8.4.4
