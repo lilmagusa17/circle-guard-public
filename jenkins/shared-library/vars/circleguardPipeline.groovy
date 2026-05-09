@@ -28,7 +28,6 @@ def call(Map config) {
         }
 
         options {
-            timestamps()
             disableConcurrentBuilds()
             buildDiscarder(logRotator(numToKeepStr: '10'))
         }
