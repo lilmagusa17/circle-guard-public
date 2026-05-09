@@ -67,10 +67,12 @@ def call(Map config) {
             }
 
             // Solo STAGE y MASTER cargan la imagen en Minikube y despliegan
+            // Jenkins comparte el Docker socket del host, así que usamos docker exec
+            // para cargar la imagen directamente en el contenedor minikube del host.
             stage('Load Image to Minikube') {
                 when { expression { deployToK8s } }
                 steps {
-                    sh "minikube image load ${image}"
+                    sh "docker save ${image} | docker exec -i minikube docker load"
                 }
             }
 
