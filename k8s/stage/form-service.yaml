@@ -16,6 +16,7 @@ spec:
       containers:
         - name: form-service
           image: circleguard/form-service:stage
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           env:

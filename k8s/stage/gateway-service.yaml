@@ -16,6 +16,7 @@ spec:
       containers:
         - name: gateway-service
           image: circleguard/gateway-service:stage
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           env:
