@@ -15,10 +15,12 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
+import org.junit.jupiter.api.Tag;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("integration")
 @SpringBootTest
 @Testcontainers
 public class AdministrativeCorrectionTest {

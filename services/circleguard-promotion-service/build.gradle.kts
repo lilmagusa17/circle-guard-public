@@ -33,9 +33,13 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform {
-        // Excluir tests de performance del ciclo normal (correr con -Pperformance para incluirlos)
+        // Excluir tests de performance del ciclo normal
         if (!project.hasProperty("performance")) {
             excludeTags("performance")
+        }
+        // Excluir tests de integración con TestContainers del ciclo normal (requieren Docker estable)
+        if (!project.hasProperty("integration")) {
+            excludeTags("integration")
         }
     }
 }

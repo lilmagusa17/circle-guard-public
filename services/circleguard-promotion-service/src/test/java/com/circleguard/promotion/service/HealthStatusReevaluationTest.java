@@ -10,12 +10,14 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.Neo4jContainer;
+import org.junit.jupiter.api.Tag;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Tag("integration")
 @SpringBootTest
 @Testcontainers
 public class HealthStatusReevaluationTest {
