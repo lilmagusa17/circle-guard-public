@@ -59,7 +59,7 @@ def call(Map config) {
             stage('Docker Build') {
                 steps {
                     sh """
-                        docker build \\
+                        docker build --pull=false \\
                           -f services/circleguard-${service}/Dockerfile \\
                           -t ${image} .
                     """
