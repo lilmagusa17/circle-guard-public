@@ -2,23 +2,18 @@
  * Shared Library: circleguardPipeline
  * Reutilizable por los 6 microservicios en los 3 ambientes.
  *
- * Uso:
- *   circleguardPipeline(
- *     service: 'form-service',
- *     environment: 'dev',          // dev | stage | master
- *     runIntegration: false,
- *     runE2E: false,
- *     runPerformance: false,
- *     requireApproval: false
- *   )
+ * DEV:    Checkout → Build → Unit Tests → Docker Build (local)
+ * STAGE:  + Integration Tests → E2E Tests → Deploy K8s (circleguard-stage)
+ * MASTER: + Approval → Performance Tests → Deploy K8s (circleguard-master) → Release Notes
  */
 def call(Map config) {
-    def service     = config.service
-    def env         = config.environment ?: 'dev'
-    def namespace   = "circleguard-${env}"
-    def imageTag    = env == 'master' ? 'latest' : env
-    def image       = "circleguard/${service}:${imageTag}"
+    def service      = config.service
+    def env          = config.environment ?: 'dev'
+    def namespace    = "circleguard-${env}"
+    def imageTag     = env == 'master' ? 'latest' : env
+    def image        = "circleguard/${service}:${imageTag}"
     def gradleModule = ":services:circleguard-${service}"
+    def deployToK8s  = (env == 'stage' || env == 'master')
 
     pipeline {
         agent any
@@ -33,8 +28,7 @@ def call(Map config) {
         }
 
         environment {
-            DOCKER_REGISTRY = credentials('docker-registry-credentials')
-            KUBECONFIG      = credentials('kubeconfig')
+            KUBECONFIG = credentials('kubeconfig')
         }
 
         stages {
@@ -62,34 +56,41 @@ def call(Map config) {
                 }
             }
 
-            stage('Docker Build & Push') {
+            stage('Docker Build') {
                 steps {
                     sh """
-                        docker build \
-                          -f services/circleguard-${service}/Dockerfile \
+                        docker build \\
+                          -f services/circleguard-${service}/Dockerfile \\
                           -t ${image} .
-                        echo \$DOCKER_REGISTRY_PSW | docker login -u \$DOCKER_REGISTRY_USR --password-stdin
-                        docker push ${image}
                     """
                 }
             }
 
-            stage('Deploy') {
+            // Solo STAGE y MASTER cargan la imagen en Minikube y despliegan
+            stage('Load Image to Minikube') {
+                when { expression { deployToK8s } }
                 steps {
-                    sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace}"
-                    sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s"
+                    sh "minikube image load ${image}"
                 }
             }
 
             stage('Integration Tests') {
                 when { expression { config.runIntegration == true } }
                 steps {
-                    sh "./gradlew ${gradleModule}:integrationTest --no-daemon"
+                    sh "./gradlew :tests:integration:test --no-daemon"
                 }
                 post {
                     always {
-                        junit "services/circleguard-${service}/build/test-results/integrationTest/*.xml"
+                        junit 'tests/integration/build/test-results/test/*.xml'
                     }
+                }
+            }
+
+            stage('Deploy to Kubernetes') {
+                when { expression { deployToK8s } }
+                steps {
+                    sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace}"
+                    sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s"
                 }
             }
 
@@ -109,7 +110,7 @@ def call(Map config) {
                 when { expression { config.requireApproval == true } }
                 steps {
                     timeout(time: 30, unit: 'MINUTES') {
-                        input message: "¿Aprobar despliegue a MASTER?", ok: 'Desplegar'
+                        input message: "¿Aprobar despliegue a MASTER de ${service}?", ok: 'Desplegar'
                     }
                 }
             }
@@ -119,9 +120,9 @@ def call(Map config) {
                 steps {
                     sh """
                         pip install locust --quiet
-                        locust -f tests/performance/locustfile.py \
-                               --headless -u 50 -r 5 -t 60s \
-                               --host=http://${service}.${namespace}.svc.cluster.local:8080 \
+                        locust -f tests/performance/locustfile.py \\
+                               --headless -u 50 -r 5 -t 60s \\
+                               --host=http://${service}.${namespace}.svc.cluster.local:8080 \\
                                --csv=build/locust/${service}
                     """
                 }
@@ -143,10 +144,10 @@ def call(Map config) {
 
         post {
             success {
-                echo "Pipeline ${service} [${env}] completado exitosamente."
+                echo "✅ Pipeline ${service} [${env}] completado exitosamente."
             }
             failure {
-                echo "Pipeline ${service} [${env}] falló."
+                echo "❌ Pipeline ${service} [${env}] falló."
             }
         }
     }

@@ -12,9 +12,14 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock   # Para que Jenkins pueda usar Docker
+      - gradle_cache:/root/.gradle                  # Cache de Gradle en volumen Docker
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     user: root   # Necesario para acceder a docker.sock
 
 volumes:
   jenkins_home:
+  gradle_cache:
