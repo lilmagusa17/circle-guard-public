@@ -83,7 +83,9 @@ def call(Map config) {
                 }
                 post {
                     always {
-                        junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
+                        }
                     }
                 }
             }
@@ -103,7 +105,9 @@ def call(Map config) {
                 }
                 post {
                     always {
-                        junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
+                        }
                     }
                 }
             }
