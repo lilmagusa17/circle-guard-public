@@ -49,3 +49,5 @@ neo4jdata/
 
 
 .agent
+
+kubeconfig.txt

@@ -91,8 +91,8 @@ def call(Map config) {
             stage('Deploy to Kubernetes') {
                 when { expression { deployToK8s } }
                 steps {
-                    sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace}"
-                    sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s"
+                    sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
+                    sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true"
                 }
             }
 
