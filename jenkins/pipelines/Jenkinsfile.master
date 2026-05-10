@@ -82,7 +82,9 @@ pipeline {
 
         stage('System Integration Tests') {
             steps {
-                sh "./gradlew :tests:integration:test --no-daemon || echo 'Warning: Integration tests failed'"
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "./gradlew :tests:integration:test --no-daemon"
+                }
             }
             post {
                 always {

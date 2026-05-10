@@ -6,12 +6,13 @@ import hudson.plugins.git.GitSCM
 import hudson.plugins.git.UserRemoteConfig
 import hudson.plugins.git.BranchSpec
 
-def jenkins = Jenkins.getInstance()
-def services = ['file-service', 'form-service', 'gateway-service', 'identity-service', 'notification-service', 'promotion-service']
+def jenkins = Jenkins.get()
 
-// Replace this with your actual repository URL if you are using a fork
-def repoUrl = "https://github.com/jcmunozf/circle-guard-public.git"
-def branch = "*/main" // or "*/master" depending on your repo
+def servicesStr = System.getenv("SERVICES") ?: 'file-service,form-service,gateway-service,identity-service,notification-service,promotion-service'
+def services = servicesStr.split(',').collect { it.trim() }
+
+def repoUrl = System.getenv("REPO_URL") ?: "https://github.com/jcmunozf/circle-guard-public.git"
+def branch = System.getenv("BRANCH") ?: "*/main"
 
 println "--- DELETING OLD JOBS ---"
 services.each { service ->

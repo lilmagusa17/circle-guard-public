@@ -74,7 +74,9 @@ pipeline {
 
         stage('System Integration Tests') {
             steps {
-                sh "./gradlew :tests:integration:test --no-daemon || echo 'Warning: Integration tests failed'"
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "./gradlew :tests:integration:test --no-daemon"
+                }
             }
             post {
                 always {
@@ -85,7 +87,14 @@ pipeline {
 
         stage('System E2E Tests') {
             steps {
-                sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env} || echo 'Warning: E2E tests failed'"
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env}"
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
+                }
             }
         }
     }

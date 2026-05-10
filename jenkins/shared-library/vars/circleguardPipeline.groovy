@@ -79,12 +79,13 @@ def call(Map config) {
             stage('Integration Tests') {
                 when { expression { config.runIntegration == true } }
                 steps {
-                    sh "./gradlew :tests:integration:test --no-daemon || echo 'Warning: Integration tests failed (Docker resource contention)'"
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        sh "./gradlew :tests:integration:test --no-daemon"
+                    }
                 }
                 post {
                     always {
                         junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
-                        script { currentBuild.result = 'SUCCESS' }
                     }
                 }
             }
@@ -100,7 +101,14 @@ def call(Map config) {
             stage('E2E Tests') {
                 when { expression { config.runE2E == true } }
                 steps {
-                    sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env} || echo 'Warning: E2E tests failed (services require running K8s infra)'"
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env}"
+                    }
+                }
+                post {
+                    always {
+                        junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
+                    }
                 }
             }
 
