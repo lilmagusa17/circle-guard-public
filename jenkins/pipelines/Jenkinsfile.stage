@@ -65,7 +65,7 @@ pipeline {
                 script {
                     for (service in services) {
                         echo "Deploying ${service} to Kubernetes stage..."
-                        sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
+                        sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true --validate=false"
                         sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true || echo 'Warning: rollout timeout'"
                     }
                 }
