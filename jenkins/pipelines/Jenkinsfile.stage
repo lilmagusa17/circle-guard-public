@@ -1,0 +1,110 @@
+def services = ['file-service', 'form-service', 'gateway-service', 'identity-service', 'notification-service', 'promotion-service']
+def env = 'stage'
+def namespace = "circleguard-${env}"
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK-21'
+    }
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    }
+
+    environment {
+        KUBECONFIG = credentials('kubeconfig')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Unit Tests') {
+            steps {
+                script {
+                    for (service in services) {
+                        def gradleModule = ":services:circleguard-${service}"
+                        echo "Building and testing ${service}..."
+                        sh "./gradlew ${gradleModule}:bootJar --no-daemon"
+                        sh "./gradlew ${gradleModule}:test --no-daemon"
+                    }
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'services/**/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('Docker Build & Load') {
+            steps {
+                script {
+                    for (service in services) {
+                        def image = "circleguard/${service}:${env}"
+                        echo "Docker build for ${service}..."
+                        sh """
+                            docker build --pull=false \\
+                              -f services/circleguard-${service}/Dockerfile \\
+                              -t ${image} .
+                        """
+                        sh "docker save ${image} | docker exec -i minikube docker load"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes Stage') {
+            steps {
+                script {
+                    for (service in services) {
+                        echo "Deploying ${service} to Kubernetes stage..."
+                        sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
+                        sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true || echo 'Warning: rollout timeout'"
+                    }
+                }
+            }
+        }
+
+        stage('System Integration Tests') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "./gradlew :tests:integration:test --no-daemon"
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('System E2E Tests') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env}"
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline System [${env}] completado exitosamente."
+        }
+        failure {
+            echo "❌ Pipeline System [${env}] falló."
+        }
+    }
+}

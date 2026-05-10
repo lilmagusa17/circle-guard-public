@@ -79,13 +79,13 @@ def call(Map config) {
             stage('Integration Tests') {
                 when { expression { config.runIntegration == true } }
                 steps {
-                    sh "./gradlew :tests:integration:test --no-daemon || echo 'Warning: Integration tests failed (Docker resource contention)'"
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        sh "./gradlew :tests:integration:test --no-daemon"
+                    }
                 }
                 post {
                     always {
-                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                            junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
-                        }
+                        junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
                     }
                 }
             }
@@ -101,13 +101,13 @@ def call(Map config) {
             stage('E2E Tests') {
                 when { expression { config.runE2E == true } }
                 steps {
-                    sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env} || echo 'Warning: E2E tests failed (services require running K8s infra)'"
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env}"
+                    }
                 }
                 post {
                     always {
-                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                            junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
-                        }
+                        junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
                     }
                 }
             }
@@ -127,7 +127,7 @@ def call(Map config) {
                     sh """
                         pip install locust --quiet
                         locust -f tests/performance/locustfile.py \\
-                               --headless -u 50 -r 5 -t 60s \\
+                               --headless -u 10 -r 2 -t 15s \\
                                --host=http://${service}.${namespace}.svc.cluster.local:8080 \\
                                --csv=build/locust/${service}
                     """

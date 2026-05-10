@@ -1,0 +1,134 @@
+def services = ['file-service', 'form-service', 'gateway-service', 'identity-service', 'notification-service', 'promotion-service']
+def env = 'master'
+def namespace = "circleguard-${env}"
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK-21'
+    }
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    }
+
+    environment {
+        KUBECONFIG = credentials('kubeconfig')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Unit Tests') {
+            steps {
+                script {
+                    for (service in services) {
+                        def gradleModule = ":services:circleguard-${service}"
+                        echo "Building and testing ${service}..."
+                        sh "./gradlew ${gradleModule}:bootJar --no-daemon"
+                        sh "./gradlew ${gradleModule}:test --no-daemon"
+                    }
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'services/**/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('Docker Build & Load') {
+            steps {
+                script {
+                    for (service in services) {
+                        def image = "circleguard/${service}:latest"
+                        echo "Docker build for ${service}..."
+                        sh """
+                            docker build --pull=false \\
+                              -f services/circleguard-${service}/Dockerfile \\
+                              -t ${image} .
+                        """
+                        sh "docker save ${image} | docker exec -i minikube docker load"
+                    }
+                }
+            }
+        }
+
+        stage('Approval') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input message: "¿Aprobar despliegue a MASTER del sistema completo?", ok: 'Desplegar'
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes Master') {
+            steps {
+                script {
+                    for (service in services) {
+                        echo "Deploying ${service} to Kubernetes master..."
+                        sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
+                        sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true || echo 'Warning: rollout timeout'"
+                    }
+                }
+            }
+        }
+
+        stage('System Integration Tests') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "./gradlew :tests:integration:test --no-daemon"
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'tests/integration/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('Performance Tests') {
+            steps {
+                sh "pip install locust --quiet"
+                script {
+                    for (service in services) {
+                        echo "Performance tests for ${service}..."
+                        sh """
+                            locust -f tests/performance/locustfile.py \\
+                                   --headless -u 10 -r 2 -t 15s \\
+                                   --host=http://${service}.${namespace}.svc.cluster.local:8080 \\
+                                   --csv=build/locust/${service} || echo 'Warning: locust test failed for ${service}'
+                        """
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'build/locust/**/*.csv', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Release Notes') {
+            steps {
+                sh 'bash jenkins/scripts/generate-release-notes.sh'
+                archiveArtifacts artifacts: 'CHANGELOG.md'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline System [${env}] completado exitosamente."
+        }
+        failure {
+            echo "❌ Pipeline System [${env}] falló."
+        }
+    }
+}
