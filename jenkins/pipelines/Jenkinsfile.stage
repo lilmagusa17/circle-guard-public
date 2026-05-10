@@ -65,8 +65,9 @@ pipeline {
                 script {
                     for (service in services) {
                         echo "Deploying ${service} to Kubernetes stage..."
-                        sh "cat k8s/${env}/${service}.yaml | docker exec -i minikube kubectl apply -f - --namespace=${namespace}"
-                        sh "docker exec minikube kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s || echo 'Warning: rollout timeout'"
+                        sh "docker cp k8s/${env}/${service}.yaml minikube:/tmp/${service}.yaml"
+                        sh "docker exec minikube /var/lib/minikube/binaries/kubectl apply -f /tmp/${service}.yaml --namespace=${namespace}"
+                        sh "docker exec minikube /var/lib/minikube/binaries/kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s || echo 'Warning: rollout timeout'"
                     }
                 }
             }
