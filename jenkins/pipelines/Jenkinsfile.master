@@ -171,23 +171,36 @@ pipeline {
         stage('Performance Tests') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    sh "python3 -m pip install locust --quiet"
-                    script {
-                        for (service in services) {
-                            echo "Performance tests for ${service}..."
-                            sh """
-                                locust -f tests/performance/locustfile.py \\
-                                       --headless -u 10 -r 2 -t 15s \\
-                                       --host=http://${service}.${namespace}.svc.cluster.local:8080 \\
-                                       --csv=build/locust/${service} || echo 'Warning: locust test failed for ${service}'
-                            """
-                        }
-                    }
+                    sh """
+                        apt-get install -y python3-pip --quiet
+                        python3 -m pip install locust --quiet
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/form-service     9091:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/gateway-service  9092:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/promotion-service 9093:8080 --insecure-skip-tls-verify=true &
+                        sleep 10
+                        locust -f tests/performance/locustfile.py --headless -u 10 -r 2 -t 15s \
+                            --host=http://localhost:9091 \
+                            --class-picker FormServiceUser \
+                            --csv=build/locust/form-service || echo 'Warning: locust failed for form-service'
+                        locust -f tests/performance/locustfile.py --headless -u 10 -r 2 -t 15s \
+                            --host=http://localhost:9092 \
+                            --class-picker GatewayServiceUser \
+                            --csv=build/locust/gateway-service || echo 'Warning: locust failed for gateway-service'
+                        locust -f tests/performance/locustfile.py --headless -u 10 -r 2 -t 15s \
+                            --host=http://localhost:9093 \
+                            --class-picker PromotionServiceUser \
+                            --csv=build/locust/promotion-service || echo 'Warning: locust failed for promotion-service'
+                        pkill -f "kubectl port-forward" || true
+                    """
                 }
             }
             post {
                 always {
                     archiveArtifacts artifacts: 'build/locust/**/*.csv', allowEmptyArchive: true
+                    sh "pkill -f 'kubectl port-forward' || true"
                 }
             }
         }
