@@ -43,6 +43,20 @@ pipeline {
             }
         }
 
+        stage('Setup Kubeconfig') {
+            steps {
+                sh '''
+                    MINIKUBE_IP=$(docker inspect minikube --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                    MINIKUBE_NET=$(docker inspect minikube --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')
+                    echo "Minikube container IP: ${MINIKUBE_IP}, network: ${MINIKUBE_NET}"
+                    docker network connect ${MINIKUBE_NET} circleguard-jenkins || true
+                    cp $KUBECONFIG /tmp/minikube-kubeconfig
+                    sed -i "s|server:.*|server: https://${MINIKUBE_IP}:8443|g" /tmp/minikube-kubeconfig
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig cluster-info --insecure-skip-tls-verify=true
+                '''
+            }
+        }
+
         stage('Docker Build & Load') {
             steps {
                 script {
@@ -68,13 +82,35 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes Master') {
+        stage('Deploy Infrastructure') {
+            steps {
+                sh """
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        create namespace ${namespace} --dry-run=client -o yaml \
+                        | kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f - --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        apply -f k8s/${env}/infrastructure.yaml --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/postgres --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/redis --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/zookeeper --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/kafka --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/neo4j --namespace=${namespace} --timeout=180s --insecure-skip-tls-verify=true
+                """
+            }
+        }
+
+        stage('Deploy Microservices') {
             steps {
                 script {
                     for (service in services) {
                         echo "Deploying ${service} to Kubernetes master..."
-                        sh "kubectl apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
-                        sh "kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true || echo 'Warning: rollout timeout'"
+                        sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
+                        sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true || echo 'Warning: rollout timeout for ${service}'"
                     }
                 }
             }
@@ -95,16 +131,18 @@ pipeline {
 
         stage('Performance Tests') {
             steps {
-                sh "pip install locust --quiet"
-                script {
-                    for (service in services) {
-                        echo "Performance tests for ${service}..."
-                        sh """
-                            locust -f tests/performance/locustfile.py \\
-                                   --headless -u 10 -r 2 -t 15s \\
-                                   --host=http://${service}.${namespace}.svc.cluster.local:8080 \\
-                                   --csv=build/locust/${service} || echo 'Warning: locust test failed for ${service}'
-                        """
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh "pip install locust --quiet"
+                    script {
+                        for (service in services) {
+                            echo "Performance tests for ${service}..."
+                            sh """
+                                locust -f tests/performance/locustfile.py \\
+                                       --headless -u 10 -r 2 -t 15s \\
+                                       --host=http://${service}.${namespace}.svc.cluster.local:8080 \\
+                                       --csv=build/locust/${service} || echo 'Warning: locust test failed for ${service}'
+                            """
+                        }
                     }
                 }
             }

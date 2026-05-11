@@ -74,10 +74,31 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes Stage') {
+        stage('Deploy Infrastructure') {
+            steps {
+                sh """
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        create namespace ${namespace} --dry-run=client -o yaml \
+                        | kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f - --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        apply -f k8s/${env}/infrastructure.yaml --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/postgres --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/redis --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/zookeeper --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/kafka --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                        rollout status deployment/neo4j --namespace=${namespace} --timeout=180s --insecure-skip-tls-verify=true
+                """
+            }
+        }
+
+        stage('Deploy Microservices') {
             steps {
                 script {
-                    sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig create namespace ${namespace} --dry-run=client -o yaml | kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f - --insecure-skip-tls-verify=true"
                     for (service in services) {
                         echo "Deploying ${service} to Kubernetes stage..."
                         sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
@@ -103,12 +124,23 @@ pipeline {
         stage('System E2E Tests') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    sh "./gradlew :tests:e2e:test --no-daemon -Denv=${env}"
+                    sh """
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/gateway-service   8087:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/identity-service  8083:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/form-service      8086:8080 --insecure-skip-tls-verify=true &
+                        sleep 15
+                        ./gradlew :tests:e2e:test --no-daemon
+                        pkill -f "kubectl port-forward" || true
+                    """
                 }
             }
             post {
                 always {
                     junit allowEmptyResults: true, testResults: 'tests/e2e/build/test-results/test/*.xml'
+                    sh "pkill -f 'kubectl port-forward' || true"
                 }
             }
         }
