@@ -198,9 +198,9 @@ spec:
             - name: NEO4J_AUTH
               value: neo4j/password
             - name: NEO4J_server_memory_heap_initial__size
-              value: 256m
+              value: 128m
             - name: NEO4J_server_memory_heap_max__size
-              value: 512m
+              value: 256m
           ports:
             - containerPort: 7474
             - containerPort: 7687

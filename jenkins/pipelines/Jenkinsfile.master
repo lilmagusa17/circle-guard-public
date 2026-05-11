@@ -99,7 +99,7 @@ pipeline {
                     kubectl --kubeconfig=/tmp/minikube-kubeconfig \
                         rollout status deployment/kafka --namespace=${namespace} --timeout=180s --insecure-skip-tls-verify=true
                     kubectl --kubeconfig=/tmp/minikube-kubeconfig \
-                        rollout status deployment/neo4j --namespace=${namespace} --timeout=180s --insecure-skip-tls-verify=true
+                        rollout status deployment/neo4j --namespace=${namespace} --timeout=300s --insecure-skip-tls-verify=true
                 """
             }
         }
