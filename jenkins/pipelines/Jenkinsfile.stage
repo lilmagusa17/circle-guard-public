@@ -14,10 +14,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 
-    environment {
-        KUBECONFIG = credentials('kubeconfig')
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -43,6 +39,18 @@ pipeline {
             }
         }
 
+        stage('Setup Kubeconfig') {
+            steps {
+                sh '''
+                    docker exec minikube cat /root/.kube/config > /tmp/minikube-kubeconfig
+                    MINIKUBE_IP=$(docker inspect minikube --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+                    sed -i "s/127.0.0.1/${MINIKUBE_IP}/g" /tmp/minikube-kubeconfig
+                    sed -i "s/localhost/${MINIKUBE_IP}/g" /tmp/minikube-kubeconfig
+                    kubectl --kubeconfig=/tmp/minikube-kubeconfig cluster-info --insecure-skip-tls-verify=true
+                '''
+            }
+        }
+
         stage('Docker Build & Load') {
             steps {
                 script {
@@ -63,11 +71,11 @@ pipeline {
         stage('Deploy to Kubernetes Stage') {
             steps {
                 script {
+                    sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig create namespace ${namespace} --dry-run=client -o yaml | kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f - --insecure-skip-tls-verify=true"
                     for (service in services) {
                         echo "Deploying ${service} to Kubernetes stage..."
-                        sh "docker cp k8s/${env}/${service}.yaml minikube:/tmp/${service}.yaml"
-                        sh "docker exec minikube /var/lib/minikube/binaries/kubectl apply -f /tmp/${service}.yaml --namespace=${namespace}"
-                        sh "docker exec minikube /var/lib/minikube/binaries/kubectl rollout status deployment/${service} --namespace=${namespace} --timeout=120s || echo 'Warning: rollout timeout'"
+                        sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f k8s/${env}/${service}.yaml --namespace=${namespace} --insecure-skip-tls-verify=true"
+                        sh "kubectl --kubeconfig=/tmp/minikube-kubeconfig rollout status deployment/${service} --namespace=${namespace} --timeout=120s --insecure-skip-tls-verify=true || echo 'Warning: rollout timeout for ${service}'"
                     }
                 }
             }
