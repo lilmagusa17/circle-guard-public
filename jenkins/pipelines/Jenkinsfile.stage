@@ -47,7 +47,9 @@ pipeline {
             steps {
                 sh '''
                     MINIKUBE_IP=$(docker inspect minikube --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-                    echo "Minikube container IP: ${MINIKUBE_IP}"
+                    MINIKUBE_NET=$(docker inspect minikube --format='{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')
+                    echo "Minikube container IP: ${MINIKUBE_IP}, network: ${MINIKUBE_NET}"
+                    docker network connect ${MINIKUBE_NET} circleguard-jenkins || true
                     cp $KUBECONFIG /tmp/minikube-kubeconfig
                     sed -i "s|server:.*|server: https://${MINIKUBE_IP}:8443|g" /tmp/minikube-kubeconfig
                     kubectl --kubeconfig=/tmp/minikube-kubeconfig cluster-info --insecure-skip-tls-verify=true
