@@ -14,6 +14,10 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 
+    environment {
+        KUBECONFIG = credentials('kubeconfig')
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -42,10 +46,10 @@ pipeline {
         stage('Setup Kubeconfig') {
             steps {
                 sh '''
-                    docker exec minikube cat /root/.kube/config > /tmp/minikube-kubeconfig
                     MINIKUBE_IP=$(docker inspect minikube --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-                    sed -i "s/127.0.0.1/${MINIKUBE_IP}/g" /tmp/minikube-kubeconfig
-                    sed -i "s/localhost/${MINIKUBE_IP}/g" /tmp/minikube-kubeconfig
+                    echo "Minikube container IP: ${MINIKUBE_IP}"
+                    cp $KUBECONFIG /tmp/minikube-kubeconfig
+                    sed -i "s|server:.*|server: https://${MINIKUBE_IP}:8443|g" /tmp/minikube-kubeconfig
                     kubectl --kubeconfig=/tmp/minikube-kubeconfig cluster-info --insecure-skip-tls-verify=true
                 '''
             }
