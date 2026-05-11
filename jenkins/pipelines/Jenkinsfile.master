@@ -85,6 +85,11 @@ pipeline {
         stage('Deploy Infrastructure') {
             steps {
                 sh """
+                    docker exec minikube docker pull postgres:16-alpine
+                    docker exec minikube docker pull redis:7-alpine
+                    docker exec minikube docker pull confluentinc/cp-zookeeper:7.6.0
+                    docker exec minikube docker pull confluentinc/cp-kafka:7.6.0
+                    docker exec minikube docker pull neo4j:5
                     kubectl --kubeconfig=/tmp/minikube-kubeconfig \
                         create namespace ${namespace} --dry-run=client -o yaml \
                         | kubectl --kubeconfig=/tmp/minikube-kubeconfig apply -f - --insecure-skip-tls-verify=true
