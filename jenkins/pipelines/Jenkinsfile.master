@@ -129,10 +129,44 @@ pipeline {
             }
         }
 
+        stage('Smoke Tests') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh """
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/file-service         9081:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/form-service          9082:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/gateway-service       9083:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/identity-service      9084:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/notification-service  9085:8080 --insecure-skip-tls-verify=true &
+                        kubectl --kubeconfig=/tmp/minikube-kubeconfig \
+                            port-forward -n ${namespace} svc/promotion-service     9086:8080 --insecure-skip-tls-verify=true &
+                        sleep 20
+                        curl -sf http://localhost:9081/actuator/health && echo 'file-service OK'         || echo 'WARNING: file-service health check failed'
+                        curl -sf http://localhost:9082/actuator/health && echo 'form-service OK'         || echo 'WARNING: form-service health check failed'
+                        curl -sf http://localhost:9083/actuator/health && echo 'gateway-service OK'      || echo 'WARNING: gateway-service health check failed'
+                        curl -sf http://localhost:9084/actuator/health && echo 'identity-service OK'     || echo 'WARNING: identity-service health check failed'
+                        curl -sf http://localhost:9085/actuator/health && echo 'notification-service OK' || echo 'WARNING: notification-service health check failed'
+                        curl -sf http://localhost:9086/actuator/health && echo 'promotion-service OK'    || echo 'WARNING: promotion-service health check failed'
+                        pkill -f "kubectl port-forward" || true
+                    """
+                }
+            }
+            post {
+                always {
+                    sh "pkill -f 'kubectl port-forward' || true"
+                }
+            }
+        }
+
         stage('Performance Tests') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    sh "pip install locust --quiet"
+                    sh "python3 -m pip install locust --quiet"
                     script {
                         for (service in services) {
                             echo "Performance tests for ${service}..."
