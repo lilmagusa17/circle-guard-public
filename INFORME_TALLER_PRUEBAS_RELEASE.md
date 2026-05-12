@@ -217,7 +217,7 @@ Las pruebas E2E validan flujos completos de usuario a través de múltiples micr
 
 **Por qué `sleep 15`:** Los túneles `port-forward` se establecen de forma asíncrona. Sin espera, los primeros requests del test encuentran el puerto aún no disponible y fallan con `Connection refused`. 15 segundos es suficiente para que los tres port-forwards estén activos.
 
-![E2E](screenshots\test_e2e.jpeg)
+![E2E](screenshots/test_e2e.jpeg)
 
 ## 5. Pipeline de Producción (`Jenkinsfile.master`)
 
@@ -243,7 +243,7 @@ stage('Approval') {
 }
 ```
 
-![Approval](screenshots\jenkins_prod_accept.jpeg)
+![Approval](screenshots/jenkins_prod_accept.jpeg)
 
 Esta etapa implementa un **gate de aprobación humana** antes del deployment a producción. El pipeline se pausa y espera confirmación explícita de un operador autorizado. Si nadie aprueba en 30 minutos, el pipeline se cancela automáticamente.
 
@@ -283,11 +283,11 @@ Las pruebas de carga se ejecutan con **Locust**, un framework Python de performa
 
 Parámetros: **10 usuarios virtuales**, spawn rate **2 usuarios/segundo**, duración **15 segundos por servicio**. Los resultados se exportan en CSV (p50, p95, p99, throughput, tasa de error) y se archivan como artefactos del build.
 
-![Locust Form Service](screenshots\locust_formservice.jpeg)
+![Locust Form Service](screenshots/locust_formservice.jpeg)
 
-![Locust Gateway Service](screenshots\locust_gateawayservice.jpeg)
+![Locust Gateway Service](screenshots/locust_gateawayservice.jpeg)
 
-![Locust Promotion Service](screenshots\locust_promotionservice.jpeg)
+![Locust Promotion Service](screenshots/locust_promotionservice.jpeg)
 
 ### 5.4 Release Notes
 
@@ -370,7 +370,7 @@ Nuestro pipeline prioriza **robustez y completitud de pruebas** sobre velocidad 
 
 Cada ambiente tiene su propio namespace Kubernetes (`circleguard-stage`, `circleguard-master`). Esto garantiza aislamiento total: un fallo en stage no afecta master, y ambos pueden ejecutarse simultáneamente sin interferencia de servicios ni puertos.
 
-![minkube](screenshots\minikube_kubectl.png)
+![minikube](screenshots/minikube_kubectl.png)
 
 ### 8.2 Imágenes sin registro externo
 
