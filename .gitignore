@@ -53,3 +53,4 @@ neo4jdata/
 kubeconfig.txt
 #*.pdf
 *.docx
+.claude
