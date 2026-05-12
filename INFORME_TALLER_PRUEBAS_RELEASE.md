@@ -17,7 +17,7 @@ CircleGuard es un sistema de microservicios diseñado para el monitoreo de salud
 
 Todos los servicios están implementados en **Java 21 con Spring Boot**, construidos con **Gradle**, y desplegados como contenedores Docker en un clúster **Kubernetes (Minikube)**.
 
-![Jenkins](screenshots\jenkins_pipelines.jpeg)
+![Jenkins](screenshots/jenkins_pipelines.jpeg)
 
 ## 2. Infraestructura de CI/CD
 
