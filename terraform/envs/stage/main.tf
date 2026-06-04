@@ -43,6 +43,8 @@ module "iam" {
   project_id    = var.project_id
   environment   = "stage"
   k8s_namespace = "circleguard-stage"
+
+  depends_on = [module.gke]
 }
 
 output "gke_cluster_name" {

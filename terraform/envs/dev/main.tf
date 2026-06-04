@@ -51,6 +51,9 @@ module "iam" {
   project_id    = var.project_id
   environment   = "dev"
   k8s_namespace = "circleguard-dev"
+
+  # WI bindings need the GKE cluster to exist first (it creates the identity pool)
+  depends_on = [module.gke]
 }
 
 output "gke_cluster_name" {
