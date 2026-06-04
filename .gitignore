@@ -53,7 +53,17 @@ neo4jdata/
 kubeconfig.txt
 #*.pdf
 *.docx
-.claude
+
 
 PLAN_MARIANA.md
 Final Ingesoft V.md
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraformrc
+terraform.rc
+# Keep lock files — they pin provider versions
+!**/.terraform.lock.hcl
