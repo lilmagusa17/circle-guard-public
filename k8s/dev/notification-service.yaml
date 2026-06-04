@@ -12,12 +12,14 @@ spec:
     metadata:
       labels:
         app: notification-service
+        version: v1
     spec:
       containers:
         - name: notification-service
-          image: circleguard/notification-service:dev
+          image: magusa17/circleguard-notification:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 8082
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: dev
@@ -25,10 +27,17 @@ spec:
               value: kafka:9092
           readinessProbe:
             httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 30
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 45
             periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
@@ -39,5 +48,5 @@ spec:
   selector:
     app: notification-service
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8082
+      targetPort: 8082

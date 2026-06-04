@@ -12,22 +12,30 @@ spec:
     metadata:
       labels:
         app: file-service
+        version: v1
     spec:
       containers:
         - name: file-service
-          image: circleguard/file-service:stage
-          imagePullPolicy: Never
+          image: magusa17/circleguard-file:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 8085
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
+              value: stage
           readinessProbe:
             httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 30
+              path: /actuator/health/readiness
+              port: 8085
+            initialDelaySeconds: 45
             periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8085
+            initialDelaySeconds: 60
+            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
@@ -38,5 +46,5 @@ spec:
   selector:
     app: file-service
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8085
+      targetPort: 8085

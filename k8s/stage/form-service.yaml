@@ -12,30 +12,38 @@ spec:
     metadata:
       labels:
         app: form-service
+        version: v1
     spec:
       containers:
         - name: form-service
-          image: circleguard/form-service:stage
-          imagePullPolicy: Never
+          image: magusa17/circleguard-form:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 8086
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
+              value: stage
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/circleguard
+              value: jdbc:postgresql://postgres:5432/circleguard_form
             - name: SPRING_DATASOURCE_USERNAME
-              value: circleguard
+              value: admin
             - name: SPRING_DATASOURCE_PASSWORD
               value: circleguard
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
           readinessProbe:
             httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 30
+              path: /actuator/health/readiness
+              port: 8086
+            initialDelaySeconds: 45
             periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8086
+            initialDelaySeconds: 60
+            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
@@ -46,5 +54,5 @@ spec:
   selector:
     app: form-service
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8086
+      targetPort: 8086

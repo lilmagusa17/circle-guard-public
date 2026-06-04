@@ -1,54 +1,56 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gateway-service
-  namespace: circleguard-stage
+  name: auth-service
+  namespace: circleguard-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: gateway-service
+      app: auth-service
   template:
     metadata:
       labels:
-        app: gateway-service
+        app: auth-service
         version: v1
     spec:
       containers:
-        - name: gateway-service
-          image: magusa17/circleguard-gateway:latest
+        - name: auth-service
+          image: magusa17/circleguard-auth:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8087
+            - containerPort: 8180
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: stage
-            - name: SPRING_DATA_REDIS_HOST
-              value: redis
-            - name: SPRING_DATA_REDIS_PORT
-              value: "6379"
+              value: dev
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/circleguard_auth
+            - name: SPRING_DATASOURCE_USERNAME
+              value: admin
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: circleguard
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 8087
+              port: 8180
             initialDelaySeconds: 45
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 8087
+              port: 8180
             initialDelaySeconds: 60
             periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: gateway-service
-  namespace: circleguard-stage
+  name: auth-service
+  namespace: circleguard-dev
 spec:
   selector:
-    app: gateway-service
+    app: auth-service
   ports:
-    - port: 8087
-      targetPort: 8087
+    - port: 8180
+      targetPort: 8180

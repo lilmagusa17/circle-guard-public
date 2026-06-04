@@ -1,54 +1,50 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gateway-service
-  namespace: circleguard-stage
+  name: file-service
+  namespace: circleguard-production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: gateway-service
+      app: file-service
   template:
     metadata:
       labels:
-        app: gateway-service
+        app: file-service
         version: v1
     spec:
       containers:
-        - name: gateway-service
-          image: magusa17/circleguard-gateway:latest
+        - name: file-service
+          image: magusa17/circleguard-file:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8087
+            - containerPort: 8085
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: stage
-            - name: SPRING_DATA_REDIS_HOST
-              value: redis
-            - name: SPRING_DATA_REDIS_PORT
-              value: "6379"
+              value: prod
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 8087
+              port: 8085
             initialDelaySeconds: 45
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 8087
+              port: 8085
             initialDelaySeconds: 60
             periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: gateway-service
-  namespace: circleguard-stage
+  name: file-service
+  namespace: circleguard-production
 spec:
   selector:
-    app: gateway-service
+    app: file-service
   ports:
-    - port: 8087
-      targetPort: 8087
+    - port: 8085
+      targetPort: 8085
