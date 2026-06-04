@@ -41,4 +41,37 @@ El Dockerfile anterior instalaba `minikube` (irrelevante en GKE) y no tenía Tri
 
 ---
 
+## Commit 4 — `feat/terraform-environments`
+**Fecha:** 2026-06-03
+**Branch:** `feat/terraform-environments` → merge a `master`
+**Mensaje de commit:** `feat(terraform): add dev/stage/prod environments with remote GCS backend`
+
+### Qué se hizo
+- Creados `terraform/envs/dev/`, `terraform/envs/stage/`, `terraform/envs/prod/` — cada uno con `backend.tf`, `main.tf`, `provider.tf`, `variables.tf`, `terraform.tfvars`.
+- **Project ID actualizado:** `tallerfinal-496702` → `circleguard-final` en los 3 `terraform.tfvars`.
+- **Bucket de estado actualizado:** `circle-guard-tfstate-496702` → `circle-guard-tfstate-final` en los 3 `backend.tf`.
+- `terraform/README.md` añadido: instrucciones de primer arranque (crear el bucket GCS manualmente antes de `terraform init`), comandos de apply/destroy por ambiente, tabla de red y advertencia de cuota de CPUs.
+
+### Por qué
+El enunciado exige Terraform modular para múltiples ambientes (20% de la nota). Estos archivos son la configuración ejecutable de los tres clusters GKE. El único cambio respecto al repo de  son el project ID y el nombre del bucket — todo lo demás (sizing, redes, módulos) es idéntico y funcional.
+
+### Paso previo necesario (antes de `terraform init`)
+Crear el bucket GCS de estado remoto manualmente **una sola vez**:
+```bash
+gcloud config set project circleguard-final
+gsutil mb -l us-central1 gs://circle-guard-tfstate-final
+gsutil versioning set on gs://circle-guard-tfstate-final
+```
+
+### ⚠️ Nota sobre Commit 3
+Los módulos son genéricos y no contienen referencias al project ID.
+
+### Archivos creados
+- `terraform/envs/dev/` (5 archivos)
+- `terraform/envs/stage/` (5 archivos)
+- `terraform/envs/prod/` (5 archivos)
+- `terraform/README.md`
+
+---
+
 <!-- Los siguientes commits se irán añadiendo aquí a medida que se completen -->
