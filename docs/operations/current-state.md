@@ -2,7 +2,7 @@
 
 Live record of what is actually deployed. Update this file every time infrastructure changes.
 
-**Last updated:** 2026-06-03
+**Last updated:** 2026-06-04
 
 ---
 
@@ -15,23 +15,51 @@ Live record of what is actually deployed. Update this file every time infrastruc
 ## Terraform State Bucket
 
 - **Bucket:** `gs://circle-guard-tfstate-final`
-- **Status:** Must be created manually before first `terraform init` (see `terraform/README.md`)
+- **Status:** ✅ Created, versioning enabled
 
 ## GKE Clusters
 
 | Cluster | Status | Nodes | Notes |
 |---------|--------|-------|-------|
-| `circleguard-dev` | Not yet applied | 0 | Modules created, apply pending |
-| `circleguard-stage` | Not yet applied | 0 | Modules created, apply pending |
-| `circleguard-prod` | Not yet applied | 0 | Modules created, apply pending |
+| `circleguard-dev` | ✅ Running | 0 (scaled down) | Apply complete; scale up before use |
+| `circleguard-stage` | ✅ Running | 0 (scaled down) | Apply complete; scale up before use |
+| `circleguard-prod` | ✅ Running | 0 (scaled down) | Apply complete; scale up before use |
+
+## kubeconfig Files
+
+| File | Cluster | Status |
+|------|---------|--------|
+| `~/.kube/circleguard-dev` | circleguard-dev | ✅ Generated |
+| `~/.kube/circleguard-stage` | circleguard-stage | ✅ Generated |
+| `~/.kube/circleguard-prod` | circleguard-prod | ✅ Generated |
+
+Use with: `$env:KUBECONFIG = "$env:USERPROFILE\.kube\circleguard-dev"; $env:USE_GKE_GCLOUD_AUTH_PLUGIN = "True"`
+Also need gcloud on PATH: `$env:PATH = "C:\Users\Mariana\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin;$env:PATH"`
+
+## Artifact Registry
+
+- **URL:** `us-central1-docker.pkg.dev/circleguard-final/circleguard`
+- **Status:** ✅ Created (in dev env)
+
+## Secret Manager Secrets (shells only — no values set yet)
+
+| Env | Secrets |
+|-----|---------|
+| dev | cg-db-password-dev, cg-jwt-secret-dev, cg-dockerhub-user-dev, cg-dockerhub-password-dev, cg-mail-password-dev |
+| stage | same pattern with -stage suffix |
+| prod | same pattern with -prod suffix |
+
+## IAM Service Accounts
+
+Per env: `eso-sa-<env>` (ESO, secretmanager.secretAccessor) + `cg-{auth,dashboard,file,form,gateway,identity,notification,promotion}-<env>` (Workload Identity).
 
 ## Phase Completion
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 0 — Foundation | 🔴 Not started | Prereqs needed |
-| Phase 1 — Terraform | 🟡 In progress | Modules written; apply pending |
-| Phase 2 — K8s Migration | 🔴 Not started | Needs Phase 1 |
+| Phase 0 — Foundation | 🔴 Not started | GCP access + APIs now done manually; board/docs pending |
+| Phase 1 — Terraform | 🟢 Done | All 16 tasks complete |
+| Phase 2 — K8s Migration | 🔴 Not started | Needs Phase 1 ✅ |
 | Phase 3 — Istio | 🔴 Not started | Needs Phase 2 |
 | Phase 4 — CI/CD | 🔴 Not started | Needs Phase 2+3 |
 | Phase 5 — Patterns | 🔴 Not started | Needs Phase 3 |
@@ -41,29 +69,27 @@ Live record of what is actually deployed. Update this file every time infrastruc
 | Phase 9 — Change Mgmt | 🔴 Not started | Needs Phase 4 |
 | Phase 10 — Docs | 🔴 Not started | Needs all phases |
 
-## Namespaces
+## Scale Up Commands (before working)
 
-Not yet deployed.
+```powershell
+$env:PATH = "C:\Users\Mariana\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin;$env:PATH"
+$gcloud = "C:\Users\Mariana\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
+# Scale up dev only (quota: max 1 cluster with nodes at a time)
+& $gcloud container clusters resize circleguard-dev --node-pool=default-pool --num-nodes=1 --region=us-central1 --project=circleguard-final --quiet
+```
 
-## Active Services
+## Scale Down Commands (after working)
 
-None — clusters not yet running.
-
-## Jenkins
-
-- Container: `circleguard-jenkins` (local Docker)
-- Status: Stopped between sessions
-- Start: `docker start circleguard-jenkins && docker exec --user root circleguard-jenkins chmod 666 /var/run/docker.sock`
-
-## SonarQube
-
-- Container: `sonarqube` (local Docker)
-- Status: Stopped between sessions
-- Start: `docker start sonarqube`
+```powershell
+& $gcloud container clusters resize circleguard-dev --node-pool=default-pool --num-nodes=0 --region=us-central1 --project=circleguard-final --quiet
+& $gcloud container clusters resize circleguard-stage --node-pool=default-pool --num-nodes=0 --region=us-central1 --project=circleguard-final --quiet
+& $gcloud container clusters resize circleguard-prod --node-pool=default-pool --num-nodes=0 --region=us-central1 --project=circleguard-final --quiet
+```
 
 ## Next Action
 
-1. Ensure GCP project `circleguard-final` exists and APIs are enabled (Phase 0.1–0.2)
-2. Create state bucket: `gsutil mb -l us-central1 gs://circle-guard-tfstate-final && gsutil versioning set on gs://circle-guard-tfstate-final`
-3. `cd terraform/envs/dev && terraform init && terraform apply`
-4. Update this file after apply succeeds
+Phase 2 — K8s Migration. Scale dev cluster up, then:
+1. Inventory existing `k8s/` manifests
+2. Update StorageClass from `do-block-storage` → `standard-rwo`
+3. Remove DO-specific LoadBalancer annotations
+4. Deploy infrastructure (Kafka, Postgres, Redis, Neo4j) to dev namespace
