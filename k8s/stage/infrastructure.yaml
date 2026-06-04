@@ -21,14 +21,14 @@ spec:
             - name: POSTGRES_DB
               value: circleguard
             - name: POSTGRES_USER
-              value: circleguard
+              value: admin
             - name: POSTGRES_PASSWORD
               value: circleguard
           ports:
             - containerPort: 5432
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "circleguard"]
+              command: ["pg_isready", "-U", "admin"]
             initialDelaySeconds: 10
             periodSeconds: 5
 ---
