@@ -2,9 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: identity-service
-  namespace: circleguard-dev
+  namespace: circleguard-production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: identity-service
@@ -22,7 +22,7 @@ spec:
             - containerPort: 8083
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
+              value: prod
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres:5432/circleguard_identity
             - name: SPRING_DATASOURCE_USERNAME
@@ -48,7 +48,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: identity-service
-  namespace: circleguard-dev
+  namespace: circleguard-production
 spec:
   selector:
     app: identity-service

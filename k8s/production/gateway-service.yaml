@@ -1,39 +1,41 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
-  namespace: circleguard-dev
+  name: gateway-service
+  namespace: circleguard-production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: notification-service
+      app: gateway-service
   template:
     metadata:
       labels:
-        app: notification-service
+        app: gateway-service
         version: v1
     spec:
       containers:
-        - name: notification-service
-          image: magusa17/circleguard-notification:latest
+        - name: gateway-service
+          image: magusa17/circleguard-gateway:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8082
+            - containerPort: 8087
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
-            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: kafka:9092
+              value: prod
+            - name: SPRING_DATA_REDIS_HOST
+              value: redis
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
           readinessProbe:
             tcpSocket:
-              port: 8082
+              port: 8087
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 10
           livenessProbe:
             tcpSocket:
-              port: 8082
+              port: 8087
             initialDelaySeconds: 90
             periodSeconds: 15
             failureThreshold: 3
@@ -41,11 +43,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: notification-service
-  namespace: circleguard-dev
+  name: gateway-service
+  namespace: circleguard-production
 spec:
   selector:
-    app: notification-service
+    app: gateway-service
   ports:
-    - port: 8082
-      targetPort: 8082
+    - port: 8087
+      targetPort: 8087

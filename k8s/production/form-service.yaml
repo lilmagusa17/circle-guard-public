@@ -1,39 +1,45 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
-  namespace: circleguard-dev
+  name: form-service
+  namespace: circleguard-production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: notification-service
+      app: form-service
   template:
     metadata:
       labels:
-        app: notification-service
+        app: form-service
         version: v1
     spec:
       containers:
-        - name: notification-service
-          image: magusa17/circleguard-notification:latest
+        - name: form-service
+          image: magusa17/circleguard-form:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8082
+            - containerPort: 8086
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
+              value: prod
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/circleguard_form
+            - name: SPRING_DATASOURCE_USERNAME
+              value: admin
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: circleguard
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
           readinessProbe:
             tcpSocket:
-              port: 8082
+              port: 8086
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 10
           livenessProbe:
             tcpSocket:
-              port: 8082
+              port: 8086
             initialDelaySeconds: 90
             periodSeconds: 15
             failureThreshold: 3
@@ -41,11 +47,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: notification-service
-  namespace: circleguard-dev
+  name: form-service
+  namespace: circleguard-production
 spec:
   selector:
-    app: notification-service
+    app: form-service
   ports:
-    - port: 8082
-      targetPort: 8082
+    - port: 8086
+      targetPort: 8086

@@ -1,45 +1,43 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: identity-service
-  namespace: circleguard-dev
+  name: dashboard-service
+  namespace: circleguard-production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: identity-service
+      app: dashboard-service
   template:
     metadata:
       labels:
-        app: identity-service
+        app: dashboard-service
         version: v1
     spec:
       containers:
-        - name: identity-service
-          image: magusa17/circleguard-identity:latest
+        - name: dashboard-service
+          image: magusa17/circleguard-dashboard:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8083
+            - containerPort: 8084
           env:
             - name: SPRING_PROFILES_ACTIVE
-              value: dev
+              value: prod
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/circleguard_identity
+              value: jdbc:postgresql://postgres:5432/circleguard_dashboard
             - name: SPRING_DATASOURCE_USERNAME
               value: admin
             - name: SPRING_DATASOURCE_PASSWORD
               value: circleguard
-            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: kafka:9092
           readinessProbe:
             tcpSocket:
-              port: 8083
+              port: 8084
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 10
           livenessProbe:
             tcpSocket:
-              port: 8083
+              port: 8084
             initialDelaySeconds: 90
             periodSeconds: 15
             failureThreshold: 3
@@ -47,11 +45,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: identity-service
-  namespace: circleguard-dev
+  name: dashboard-service
+  namespace: circleguard-production
 spec:
   selector:
-    app: identity-service
+    app: dashboard-service
   ports:
-    - port: 8083
-      targetPort: 8083
+    - port: 8084
+      targetPort: 8084

@@ -1,39 +1,43 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
+  name: auth-service
   namespace: circleguard-stage
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: notification-service
+      app: auth-service
   template:
     metadata:
       labels:
-        app: notification-service
+        app: auth-service
         version: v1
     spec:
       containers:
-        - name: notification-service
-          image: magusa17/circleguard-notification:latest
+        - name: auth-service
+          image: magusa17/circleguard-auth:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8082
+            - containerPort: 8180
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: stage
-            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: kafka:9092
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/circleguard_auth
+            - name: SPRING_DATASOURCE_USERNAME
+              value: admin
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: circleguard
           readinessProbe:
             tcpSocket:
-              port: 8082
+              port: 8180
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 10
           livenessProbe:
             tcpSocket:
-              port: 8082
+              port: 8180
             initialDelaySeconds: 90
             periodSeconds: 15
             failureThreshold: 3
@@ -41,11 +45,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: notification-service
+  name: auth-service
   namespace: circleguard-stage
 spec:
   selector:
-    app: notification-service
+    app: auth-service
   ports:
-    - port: 8082
-      targetPort: 8082
+    - port: 8180
+      targetPort: 8180

@@ -12,12 +12,14 @@ spec:
     metadata:
       labels:
         app: gateway-service
+        version: v1
     spec:
       containers:
         - name: gateway-service
-          image: circleguard/gateway-service:dev
+          image: magusa17/circleguard-gateway:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 8087
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: dev
@@ -26,11 +28,17 @@ spec:
             - name: SPRING_DATA_REDIS_PORT
               value: "6379"
           readinessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
+            tcpSocket:
+              port: 8087
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8087
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
@@ -41,5 +49,5 @@ spec:
   selector:
     app: gateway-service
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8087
+      targetPort: 8087
