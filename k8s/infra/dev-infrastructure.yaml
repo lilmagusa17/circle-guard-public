@@ -145,6 +145,9 @@ spec:
       labels:
         app: kafka
     spec:
+      # Prevent K8s from injecting KAFKA_PORT env var which conflicts
+      # with Confluent image's dub config framework
+      enableServiceLinks: false
       containers:
         - name: kafka
           image: confluentinc/cp-kafka:7.6.0
@@ -237,6 +240,7 @@ spec:
       labels:
         app: neo4j
     spec:
+      enableServiceLinks: false
       containers:
         - name: neo4j
           image: neo4j:5
