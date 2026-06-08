@@ -35,7 +35,10 @@ pipeline {
 
         stage('Build All Services') {
             steps {
-                sh './gradlew bootJar --no-daemon --parallel'
+                script {
+                    def tasks = SERVICES.collect { s -> ":services:circleguard-${s}:bootJar" }.join(' ')
+                    sh "./gradlew ${tasks} --no-daemon --parallel"
+                }
             }
         }
 
