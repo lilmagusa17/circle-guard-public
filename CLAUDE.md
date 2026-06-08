@@ -152,20 +152,20 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **3.1 — Install Istio in dev.** `istioctl install --set profile=demo -y` against dev cluster. Verify control plane pods Running in `istio-system`.
-- [ ] **3.2 — Enable sidecar injection on circleguard-dev.** Label namespace `istio-injection=enabled`. Restart all deployments. Each pod should now have 2 containers (app + envoy).
-- [ ] **3.3 — Enforce STRICT mTLS in dev.** Apply `PeerAuthentication` resource setting `mtls.mode: STRICT` for the namespace.
-- [ ] **3.4 — Verify mTLS.** From inside one pod, attempt a plain HTTP call without sidecar — must fail. With sidecar — must succeed. Document in [`docs/operations/istio-verification.md`](docs/operations/istio-verification.md).
-- [ ] **3.5 — Install Kiali + Jaeger + Prometheus + Grafana addons.** `kubectl apply -f samples/addons/` from istio dist. (Note: this Prometheus/Grafana are minimal; Phase 7 will replace/extend them.)
-- [ ] **3.6 — Create VirtualService + DestinationRule per service.** One pair per microservice in [`k8s/istio/`](k8s/istio/) covering all 8 services.
-- [ ] **3.7 — Configure Circuit Breaker in DestinationRule.** `connectionPool` + `outlierDetection` (5xx threshold, ejection time) on every service.
-- [ ] **3.8 — Configure Retry Policy in VirtualService.** Retry on `5xx, gateway-error, connect-failure` for idempotent endpoints. Document which endpoints get retries in [`docs/patterns/resilience.md`](docs/patterns/resilience.md).
-- [ ] **3.9 — Install Ingress Gateway.** Replace nginx/GCE Ingress with Istio Gateway + VirtualService for external traffic. Allocate a single GCP external IP.
-- [ ] **3.10 — Set up canary traffic split structure.** For one service (`gateway-service`), define two `subsets` (v1, v2) in DestinationRule. VirtualService routes 100/0 (canary inactive by default). Document the workflow in [`docs/operations/canary-deployments.md`](docs/operations/canary-deployments.md).
-- [ ] **3.11 — Verify mesh in Kiali.** Open Kiali dashboard via `istioctl dashboard kiali`. Service graph shows all 8 services with mTLS lock icons. Save screenshot to [`docs/diagrams/kiali-graph.png`](docs/diagrams/kiali-graph.png).
-- [ ] **3.12 — Repeat 3.1–3.11 for stage env.**
-- [ ] **3.13 — Repeat 3.1–3.11 for prod env.**
-- [ ] **3.14 — Service Mesh documentation.** [`docs/patterns/service-mesh.md`](docs/patterns/service-mesh.md): what is implemented, why Istio over Linkerd, mTLS strategy, traffic management approach, links to Kiali screenshots.
+- [x] **3.1 — Install Istio in dev.** `istioctl install --set profile=demo -y` against dev cluster. Verify control plane pods Running in `istio-system`.
+- [x] **3.2 — Enable sidecar injection on circleguard-dev.** Label namespace `istio-injection=enabled`. Restart all deployments. Each pod should now have 2 containers (app + envoy).
+- [x] **3.3 — Enforce STRICT mTLS in dev.** Apply `PeerAuthentication` resource setting `mtls.mode: STRICT` for the namespace.
+- [x] **3.4 — Verify mTLS.** From inside one pod, attempt a plain HTTP call without sidecar — must fail. With sidecar — must succeed. Document in [`docs/operations/istio-verification.md`](docs/operations/istio-verification.md).
+- [x] **3.5 — Install Kiali + Jaeger + Prometheus + Grafana addons.** `kubectl apply -f samples/addons/` from istio dist. (Note: this Prometheus/Grafana are minimal; Phase 7 will replace/extend them.)
+- [x] **3.6 — Create VirtualService + DestinationRule per service.** One pair per microservice in [`k8s/istio/`](k8s/istio/) covering all 8 services.
+- [x] **3.7 — Configure Circuit Breaker in DestinationRule.** `connectionPool` + `outlierDetection` (5xx threshold, ejection time) on every service.
+- [x] **3.8 — Configure Retry Policy in VirtualService.** Retry on `5xx, gateway-error, connect-failure` for idempotent endpoints. Document which endpoints get retries in [`docs/patterns/resilience.md`](docs/patterns/resilience.md).
+- [x] **3.9 — Install Ingress Gateway.** Replace nginx/GCE Ingress with Istio Gateway + VirtualService for external traffic. Allocate a single GCP external IP.
+- [x] **3.10 — Set up canary traffic split structure.** For one service (`gateway-service`), define two `subsets` (v1, v2) in DestinationRule. VirtualService routes 100/0 (canary inactive by default). Document the workflow in [`docs/operations/canary-deployments.md`](docs/operations/canary-deployments.md).
+- [x] **3.11 — Verify mesh in Kiali.** Open Kiali dashboard via `istioctl dashboard kiali`. Service graph shows all 8 services with mTLS lock icons. Save screenshot to [`docs/diagrams/kiali-graph.png`](docs/diagrams/kiali-graph.png).
+- [x] **3.12 — Repeat 3.1–3.11 for stage env.**
+- [x] **3.13 — Repeat 3.1–3.11 for prod env.**
+- [x] **3.14 — Service Mesh documentation.** [`docs/patterns/service-mesh.md`](docs/patterns/service-mesh.md): what is implemented, why Istio over Linkerd, mTLS strategy, traffic management approach, links to Kiali screenshots.
 
 **Acceptance criteria:**
 - `kubectl get peerauthentication -A` shows STRICT mode in all 3 envs.
@@ -744,3 +744,37 @@ gcloud services enable artifactregistry.googleapis.com secretmanager.googleapis.
 **Context:** `circleguard-production` namespace, `dashboard-service` and other services using PostgreSQL.
 **Root cause:** When pods are rescheduled (e.g. after node scale-up), there is a window where the Istio sidecar proxy (Envoy) is not yet ready to intercept traffic. If the app container starts connecting to the database during this window, DNS resolution through the mesh fails with `UnknownHostException`. The pod crashes, enters CrashLoopBackOff, and the exponential backoff keeps it restarting faster than the sidecar can initialize.
 **Fix:** Delete the pod manually — `kubectl delete pod -n circleguard-production -l app=<service>` — so it gets a clean restart where the sidecar initializes before the app connects. Long-term fix: add annotation `proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'` to deployments that connect to databases at startup.
+
+### Istio rewrites tcpSocket probes to HTTP — "HTTP probe failed: 500" during Flyway migration
+
+**Context:** All 8 CircleGuard services after Istio sidecar injection, Phase 3.
+**Root cause:** Istio's sidecar injector rewrites container health probes to route through the pilot-agent (port 15020). tcpSocket probes become HTTP probes. During the first pod start after namespace sidecar injection, Flyway runs DB migrations (~90-120s). The Istio pilot-agent returns HTTP 500 for the readiness/liveness check until the Spring Boot application fully starts and Flyway completes. This causes exit code 137 (SIGKILL) on first and second restart attempts.
+**Fix:** Self-healing — on subsequent restarts, Flyway runs faster (schema history exists) and the service starts within the probe timeout window. No manual intervention needed. The `holdApplicationUntilProxyStarts: true` annotation (already applied to all service manifests) ensures the proxy is ready before Spring Boot starts, but the probe rewriting still occurs.
+**Prevention:** This only happens on first deployment in an Istio-injected namespace. Accept 2 restarts on fresh deploy. Do NOT increase liveness initialDelaySeconds beyond 90 — it would mask actual crashes.
+
+### Istio CNI intercepts loopback traffic in pods even with sidecar.istio.io/inject=false
+
+**Context:** `k8s/production/infrastructure.yaml`, postgres/redis pods after applying `istio-injection=enabled` namespace label.
+**Root cause:** Istio CNI node agent applies iptables rules to pod network namespaces. Even with `sidecar.istio.io/inject: "false"` annotation, the CNI agent may intercept loopback (127.0.0.1) TCP connections for pods running on the same node as an Istio-managed namespace. `pg_isready -U admin` (exec probe via loopback to port 5432) and `redis-cli ping` timeout because iptables redirects the connection.
+**Fix:** Replace ALL exec probes on infrastructure pods with `tcpSocket` probes. Kubelet's tcpSocket probes connect from OUTSIDE the pod via the pod's IP (not loopback), bypassing the pod's iptables rules. Example: `tcpSocket: port: 5432` instead of `exec: ["pg_isready", "-U", "admin"]`.
+**Prevention:** Never use exec probes for infrastructure pods in Istio-managed namespaces. Always use tcpSocket or httpGet probes that the kubelet initiates from outside the pod.
+
+### Istio CNI breaks exec probes (pg_isready, redis-cli ping) on existing infra pods
+
+**Context:** `k8s/production/infrastructure.yaml`, postgres/redis pods after applying `istio-injection=enabled` namespace label.
+**Root cause:** Istio CNI node agent applies iptables rules to pod network namespaces. When the namespace gets the `istio-injection=enabled` label, the CNI may interfere with exec probe networking for pre-existing pods (created before the label). `pg_isready -U admin` and `redis-cli ping` timeout (1s) because iptables redirects loopback connections through Envoy, but no Envoy exists in non-injected pods.
+**Fix:** Add `sidecar.istio.io/inject: "false"` annotation to ALL infrastructure pod templates (postgres, kafka, redis, neo4j, zookeeper) in the Deployment metadata. Delete old pods to force recreation without sidecar. Also change any `httpGet` probes on neo4j to `tcpSocket` probes to avoid HTTP probe failures.
+**Prevention:** Always annotate infrastructure pods with `sidecar.istio.io/inject: "false"` in any namespace with `istio-injection=enabled`. Never use `httpGet` probes on infrastructure pods in the mesh — use `exec` or `tcpSocket` only.
+
+### Production single-node resource exhaustion with Istio sidecars
+
+**Context:** `circleguard-production` namespace, circleguard-prod cluster (1 node e2-standard-2).
+**Root cause:** With Istio sidecar injection, each pod gets an Envoy container (+40-100MB RAM, +10m CPU). Production had `replicas: 2` per service. 8 services × 2 replicas × 2 containers + 5 infra pods = 21+ pods on 1 node (2 vCPUs, 8GB RAM). Node hit 103% CPU and 96% memory, causing OOM kills (exit code 137).
+**Fix:** Scale production services to `replicas: 1`. When possible, scale production to 2 nodes. All production service manifests now use `replicas: 1`.
+**Prevention:** With Istio, always account for Envoy sidecar overhead (~100MB/pod). For a 2 vCPU / 8GB node, max ~10-12 pods with sidecars.
+
+### h2UpgradePolicy: NEVER is invalid in Istio 1.24 DestinationRule
+
+**Context:** `k8s/istio/*/destination-rules.yaml`, DestinationRule `connectionPool.http.h2UpgradePolicy`.
+**Root cause:** Istio 1.24 removed `NEVER` as a valid value for `h2UpgradePolicy`. Valid values: `DEFAULT`, `DO_NOT_UPGRADE`, `UPGRADE`.
+**Fix:** Use `DO_NOT_UPGRADE` instead of `NEVER`. Already applied to all destination-rules files.
