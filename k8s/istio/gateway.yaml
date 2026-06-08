@@ -1,0 +1,20 @@
+# Istio Ingress Gateway — shared across all envs.
+# Routes external HTTP traffic on port 80 to the appropriate env's gateway-service
+# based on the Host header (dev.circleguard.local / stage.circleguard.local / *).
+# Applied to istio-system namespace where the ingress gateway pod lives.
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: circleguard-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"

@@ -13,6 +13,8 @@ spec:
       labels:
         app: form-service
         version: v1
+      annotations:
+        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
     spec:
       containers:
         - name: form-service
