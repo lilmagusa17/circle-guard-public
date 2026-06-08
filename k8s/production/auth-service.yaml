@@ -4,7 +4,7 @@ metadata:
   name: auth-service
   namespace: circleguard-production
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: auth-service
@@ -13,6 +13,8 @@ spec:
       labels:
         app: auth-service
         version: v1
+      annotations:
+        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
     spec:
       containers:
         - name: auth-service

@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: postgres
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
         - name: postgres
@@ -27,8 +29,8 @@ spec:
             - name: POSTGRES_DB
               value: circleguard
           readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "admin"]
+            tcpSocket:
+              port: 5432
             initialDelaySeconds: 10
             periodSeconds: 5
           volumeMounts:
@@ -58,6 +60,9 @@ metadata:
 spec:
   ttlSecondsAfterFinished: 300
   template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       restartPolicy: OnFailure
       initContainers:
@@ -104,6 +109,8 @@ spec:
     metadata:
       labels:
         app: zookeeper
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
         - name: zookeeper
@@ -143,6 +150,8 @@ spec:
     metadata:
       labels:
         app: kafka
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       enableServiceLinks: false
       containers:
@@ -197,6 +206,8 @@ spec:
     metadata:
       labels:
         app: redis
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
         - name: redis
@@ -204,8 +215,8 @@ spec:
           ports:
             - containerPort: 6379
           readinessProbe:
-            exec:
-              command: ["redis-cli", "ping"]
+            tcpSocket:
+              port: 6379
             initialDelaySeconds: 5
             periodSeconds: 5
 ---
@@ -236,6 +247,8 @@ spec:
     metadata:
       labels:
         app: neo4j
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       enableServiceLinks: false
       containers:
@@ -252,9 +265,8 @@ spec:
             - name: NEO4J_server_memory_heap_max__size
               value: 512m
           readinessProbe:
-            httpGet:
-              path: /
-              port: 7474
+            tcpSocket:
+              port: 7687
             initialDelaySeconds: 30
             periodSeconds: 10
           volumeMounts:

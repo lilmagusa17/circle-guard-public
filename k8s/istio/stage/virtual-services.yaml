@@ -1,0 +1,157 @@
+# VirtualServices for all 8 CircleGuard services in circleguard-dev.
+# Retry policy: 3 attempts on 5xx/gateway-error/connect-failure, 2s per-try timeout.
+# gateway-service routes 100% to v1 (canary inactive). Adjust weights to activate canary.
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: auth-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - auth-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: auth-service
+            subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: dashboard-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - dashboard-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: dashboard-service
+            subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: file-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - file-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: file-service
+            subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: form-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - form-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: form-service
+            subset: v1
+---
+# gateway-service VirtualService: mesh traffic + external ingress traffic.
+# Canary: change weights (v1: 90, v2: 10) to activate canary deployment.
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: gateway-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - gateway-service
+  gateways:
+    - istio-system/circleguard-gateway
+    - mesh
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: gateway-service
+            subset: v1
+          weight: 100
+        - destination:
+            host: gateway-service
+            subset: v2
+          weight: 0
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: identity-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - identity-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: identity-service
+            subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: notification-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - notification-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: notification-service
+            subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: promotion-service
+  namespace: circleguard-stage
+spec:
+  hosts:
+    - promotion-service
+  http:
+    - retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: promotion-service
+            subset: v1

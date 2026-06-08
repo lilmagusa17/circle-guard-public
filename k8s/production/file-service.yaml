@@ -4,7 +4,7 @@ metadata:
   name: file-service
   namespace: circleguard-production
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: file-service
@@ -13,6 +13,8 @@ spec:
       labels:
         app: file-service
         version: v1
+      annotations:
+        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
     spec:
       containers:
         - name: file-service
