@@ -1,0 +1,180 @@
+def SERVICES = [
+    'auth-service', 'dashboard-service', 'file-service', 'form-service',
+    'gateway-service', 'identity-service', 'notification-service', 'promotion-service'
+]
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK-21'
+    }
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 90, unit: 'MINUTES')
+    }
+
+    environment {
+        GKE_PROJECT              = 'circleguard-final'
+        GKE_REGION               = 'us-central1'
+        GKE_CLUSTER              = 'circleguard-dev'
+        K8S_NAMESPACE            = 'circleguard-dev'
+        USE_GKE_GCLOUD_AUTH_PLUGIN = 'True'
+        SONAR_HOST_URL           = 'http://sonarqube:9000'
+        DOCKER_HUB_PREFIX        = 'magusa17'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build All Services') {
+            steps {
+                sh './gradlew bootJar --no-daemon --parallel'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonarqube-token')
+            }
+            steps {
+                sh """
+                    ./gradlew sonar --no-daemon \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.token=${SONAR_TOKEN}
+                """
+            }
+        }
+
+        stage('Setup Docker Proxy') {
+            steps {
+                sh 'chmod 666 /var/run/docker.sock || true'
+                sh 'pkill -f docker-version-proxy || true'
+                sh 'nohup python3 ci/docker-version-proxy.py > /tmp/docker-proxy.log 2>&1 &'
+                sh 'sleep 2'
+            }
+        }
+
+        stage('Unit Tests') {
+            environment {
+                DOCKER_HOST                           = 'unix:///tmp/docker-proxy.sock'
+                TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/tmp/docker-proxy.sock'
+                TESTCONTAINERS_RYUK_DISABLED          = 'true'
+                DOCKER_API_VERSION                    = '1.44'
+                TESTCONTAINERS_HOST_OVERRIDE          = 'host.docker.internal'
+            }
+            steps {
+                script {
+                    def testStages = SERVICES.collectEntries { service ->
+                        ["test-${service}": {
+                            sh "./gradlew :services:circleguard-${service}:test --no-daemon"
+                        }]
+                    }
+                    parallel testStages
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'services/**/build/test-results/test/*.xml'
+                    sh 'pkill -f docker-version-proxy || true'
+                }
+            }
+        }
+
+        stage('Docker Build & Trivy Scan') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    script {
+                        for (service in SERVICES) {
+                            def shortName = service.replace('-service', '')
+                            def image = "${DOCKER_HUB_PREFIX}/circleguard-${shortName}"
+                            sh """
+                                docker build \
+                                    -f services/circleguard-${service}/Dockerfile \
+                                    -t ${image}:latest \
+                                    -t ${image}:${BUILD_NUMBER} \
+                                    .
+                            """
+                            sh """
+                                trivy image \
+                                    --exit-code 0 \
+                                    --severity HIGH,CRITICAL \
+                                    --no-progress \
+                                    --format table \
+                                    ${image}:${BUILD_NUMBER} || true
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    script {
+                        for (service in SERVICES) {
+                            def shortName = service.replace('-service', '')
+                            def image = "${DOCKER_HUB_PREFIX}/circleguard-${shortName}"
+                            sh "docker push ${image}:latest"
+                            sh "docker push ${image}:${BUILD_NUMBER}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to GKE DEV') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-dev', variable: 'KUBECONFIG_FILE')]) {
+                    script {
+                        for (service in SERVICES) {
+                            sh """
+                                kubectl rollout restart deployment/${service} \
+                                    -n ${K8S_NAMESPACE} \
+                                    --kubeconfig=${KUBECONFIG_FILE} || true
+                            """
+                        }
+                        sh """
+                            kubectl rollout status deployment/auth-service \
+                                -n ${K8S_NAMESPACE} \
+                                --timeout=180s \
+                                --kubeconfig=${KUBECONFIG_FILE} || true
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_URL')]) {
+                sh """
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data '{"text":"❌ *CircleGuard DEV* pipeline failed\\nJob: ${env.JOB_NAME} #${env.BUILD_NUMBER}\\nURL: ${env.BUILD_URL}"}' \
+                        "\${SLACK_URL}" || true
+                """
+            }
+        }
+        success {
+            echo "✅ DEV pipeline complete. Images pushed as :${BUILD_NUMBER} and :latest."
+        }
+    }
+}

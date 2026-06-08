@@ -1,8 +1,21 @@
 plugins {
     id("org.springframework.boot")
     id("io.spring.dependency-management")
+    id("org.sonarqube")
     kotlin("jvm")
     kotlin("plugin.spring")
+}
+
+sonarqube {
+    properties {
+        property("sonar.projectKey", "circleguard-file")
+        property("sonar.projectName", "CircleGuard File Service")
+        property("sonar.sources", "src/main/java")
+        property("sonar.tests", "src/test/java")
+        property("sonar.java.coveragePlugin", "jacoco")
+        property("sonar.coverage.jacoco.xmlReportPaths",
+            "${layout.buildDirectory.get()}/reports/jacoco/test/jacocoTestReport.xml")
+    }
 }
 
 dependencies {

@@ -1,0 +1,362 @@
+def SERVICES = [
+    'auth-service', 'dashboard-service', 'file-service', 'form-service',
+    'gateway-service', 'identity-service', 'notification-service', 'promotion-service'
+]
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK-21'
+    }
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+        timeout(time: 180, unit: 'MINUTES')
+    }
+
+    environment {
+        GKE_PROJECT              = 'circleguard-final'
+        GKE_REGION               = 'us-central1'
+        GKE_CLUSTER              = 'circleguard-prod'
+        K8S_NAMESPACE            = 'circleguard-production'
+        USE_GKE_GCLOUD_AUTH_PLUGIN = 'True'
+        SONAR_HOST_URL           = 'http://sonarqube:9000'
+        DOCKER_HUB_PREFIX        = 'magusa17'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build All Services') {
+            steps {
+                sh './gradlew bootJar --no-daemon --parallel'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonarqube-token')
+            }
+            steps {
+                sh """
+                    ./gradlew sonar --no-daemon \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.token=${SONAR_TOKEN}
+                """
+            }
+        }
+
+        stage('Setup Docker Proxy') {
+            steps {
+                sh 'chmod 666 /var/run/docker.sock || true'
+                sh 'pkill -f docker-version-proxy || true'
+                sh 'nohup python3 ci/docker-version-proxy.py > /tmp/docker-proxy.log 2>&1 &'
+                sh 'sleep 2'
+            }
+        }
+
+        stage('Unit Tests') {
+            environment {
+                DOCKER_HOST                           = 'unix:///tmp/docker-proxy.sock'
+                TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/tmp/docker-proxy.sock'
+                TESTCONTAINERS_RYUK_DISABLED          = 'true'
+                DOCKER_API_VERSION                    = '1.44'
+                TESTCONTAINERS_HOST_OVERRIDE          = 'host.docker.internal'
+            }
+            steps {
+                script {
+                    def testStages = SERVICES.collectEntries { service ->
+                        ["test-${service}": {
+                            sh "./gradlew :services:circleguard-${service}:test --no-daemon"
+                        }]
+                    }
+                    parallel testStages
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'services/**/build/test-results/test/*.xml'
+                    sh 'pkill -f docker-version-proxy || true'
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            environment {
+                DOCKER_HOST                           = 'unix:///tmp/docker-proxy.sock'
+                TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/tmp/docker-proxy.sock'
+                TESTCONTAINERS_RYUK_DISABLED          = 'true'
+                DOCKER_API_VERSION                    = '1.44'
+                TESTCONTAINERS_HOST_OVERRIDE          = 'host.docker.internal'
+            }
+            steps {
+                sh 'nohup python3 ci/docker-version-proxy.py > /tmp/docker-proxy.log 2>&1 &'
+                sh 'sleep 2'
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh './gradlew test -Pintegration --no-daemon'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'services/**/build/test-results/test/*.xml'
+                    sh 'pkill -f docker-version-proxy || true'
+                }
+            }
+        }
+
+        stage('E2E Tests') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh './gradlew test -Pe2e --no-daemon'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'services/**/build/test-results/test/*.xml'
+                }
+            }
+        }
+
+        stage('Docker Build & Trivy Scan') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    script {
+                        def version = sh(
+                            script: 'bash ci/semver.sh --dry-run 2>/dev/null || echo "0.0.${BUILD_NUMBER}"',
+                            returnStdout: true
+                        ).trim()
+                        env.RELEASE_VERSION = version
+
+                        for (service in SERVICES) {
+                            def shortName = service.replace('-service', '')
+                            def image = "${DOCKER_HUB_PREFIX}/circleguard-${shortName}"
+                            sh """
+                                docker build \
+                                    -f services/circleguard-${service}/Dockerfile \
+                                    -t ${image}:${version} \
+                                    -t ${image}:latest \
+                                    .
+                            """
+                            sh """
+                                trivy image \
+                                    --exit-code 0 \
+                                    --severity HIGH,CRITICAL \
+                                    --no-progress \
+                                    --format table \
+                                    ${image}:${version} || true
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    script {
+                        for (service in SERVICES) {
+                            def shortName = service.replace('-service', '')
+                            def image = "${DOCKER_HUB_PREFIX}/circleguard-${shortName}"
+                            sh "docker push ${image}:${env.RELEASE_VERSION}"
+                            sh "docker push ${image}:latest"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Prod Approval') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input message: "Deploy v${env.RELEASE_VERSION} to PRODUCTION?", ok: 'Deploy'
+                }
+            }
+        }
+
+        stage('Deploy to GKE Production') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-production', variable: 'KUBECONFIG_FILE')]) {
+                    script {
+                        for (service in SERVICES) {
+                            def shortName = service.replace('-service', '')
+                            def image = "${DOCKER_HUB_PREFIX}/circleguard-${shortName}"
+                            sh """
+                                kubectl set image deployment/${service} \
+                                    ${service}=${image}:${env.RELEASE_VERSION} \
+                                    -n ${K8S_NAMESPACE} \
+                                    --kubeconfig=${KUBECONFIG_FILE} || \
+                                kubectl rollout restart deployment/${service} \
+                                    -n ${K8S_NAMESPACE} \
+                                    --kubeconfig=${KUBECONFIG_FILE} || true
+                            """
+                        }
+                        sh """
+                            kubectl rollout status deployment/auth-service \
+                                -n ${K8S_NAMESPACE} \
+                                --timeout=180s \
+                                --kubeconfig=${KUBECONFIG_FILE} || true
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Canary Deploy (Auth Service)') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-production', variable: 'KUBECONFIG_FILE')]) {
+                    sh """
+                        kubectl apply --kubeconfig=${KUBECONFIG_FILE} -f - <<'YAML'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service-canary
+  namespace: circleguard-production
+  labels:
+    app: auth-service
+    version: v2
+    track: canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        version: v2
+      annotations:
+        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
+    spec:
+      containers:
+      - name: auth-service
+        image: ${DOCKER_HUB_PREFIX}/circleguard-auth:${env.RELEASE_VERSION}
+        ports:
+        - containerPort: 8180
+        imagePullPolicy: Always
+        readinessProbe:
+          tcpSocket:
+            port: 8180
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8180
+          initialDelaySeconds: 90
+          periodSeconds: 15
+YAML
+                    """
+                    sh """
+                        kubectl patch virtualservice auth-service \
+                            -n ${K8S_NAMESPACE} \
+                            --kubeconfig=${KUBECONFIG_FILE} \
+                            --type=merge \
+                            -p '{"spec":{"http":[{"retries":{"attempts":3,"perTryTimeout":"2s","retryOn":"5xx,gateway-error,connect-failure,retriable-4xx"},"route":[{"destination":{"host":"auth-service","subset":"v1"},"weight":90},{"destination":{"host":"auth-service","subset":"v2"},"weight":10}]}]}}'
+                    """
+                    echo "Canary deployed: 10% traffic to auth-service v${env.RELEASE_VERSION}"
+                }
+            }
+        }
+
+        stage('Canary Approval (30 min window)') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input message: "Canary at 10% — monitor Kiali/Grafana for errors. Promote to 100%?",
+                          ok: 'Promote to 100%',
+                          submitter: 'admin'
+                }
+            }
+            post {
+                aborted {
+                    withCredentials([file(credentialsId: 'kubeconfig-production', variable: 'KUBECONFIG_FILE')]) {
+                        sh """
+                            kubectl patch virtualservice auth-service \
+                                -n ${K8S_NAMESPACE} \
+                                --kubeconfig=${KUBECONFIG_FILE} \
+                                --type=merge \
+                                -p '{"spec":{"http":[{"retries":{"attempts":3,"perTryTimeout":"2s","retryOn":"5xx,gateway-error,connect-failure,retriable-4xx"},"route":[{"destination":{"host":"auth-service","subset":"v1"},"weight":100}]}]}}'
+                            kubectl delete deployment auth-service-canary \
+                                -n ${K8S_NAMESPACE} \
+                                --kubeconfig=${KUBECONFIG_FILE} \
+                                --ignore-not-found
+                        """
+                        echo "Canary rolled back — 100% traffic back to v1."
+                    }
+                }
+            }
+        }
+
+        stage('Canary Promote') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-production', variable: 'KUBECONFIG_FILE')]) {
+                    sh """
+                        kubectl set image deployment/auth-service \
+                            auth-service=${DOCKER_HUB_PREFIX}/circleguard-auth:${env.RELEASE_VERSION} \
+                            -n ${K8S_NAMESPACE} \
+                            --kubeconfig=${KUBECONFIG_FILE} || true
+                        kubectl patch virtualservice auth-service \
+                            -n ${K8S_NAMESPACE} \
+                            --kubeconfig=${KUBECONFIG_FILE} \
+                            --type=merge \
+                            -p '{"spec":{"http":[{"retries":{"attempts":3,"perTryTimeout":"2s","retryOn":"5xx,gateway-error,connect-failure,retriable-4xx"},"route":[{"destination":{"host":"auth-service","subset":"v1"},"weight":100}]}]}}'
+                        kubectl delete deployment auth-service-canary \
+                            -n ${K8S_NAMESPACE} \
+                            --kubeconfig=${KUBECONFIG_FILE} \
+                            --ignore-not-found
+                    """
+                    echo "Canary promoted — auth-service v${env.RELEASE_VERSION} at 100%."
+                }
+            }
+        }
+
+        stage('Generate Release Notes') {
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                    sh "bash ci/semver.sh"
+                    archiveArtifacts artifacts: 'RELEASE_NOTES_*.md', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_URL')]) {
+                sh """
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data '{"text":"❌ *CircleGuard MASTER* pipeline failed\\nJob: ${env.JOB_NAME} #${env.BUILD_NUMBER}\\nURL: ${env.BUILD_URL}"}' \
+                        "\${SLACK_URL}" || true
+                """
+            }
+        }
+        success {
+            withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_URL')]) {
+                sh """
+                    curl -s -X POST -H 'Content-type: application/json' \
+                        --data '{"text":"✅ *CircleGuard MASTER* deployed v${env.RELEASE_VERSION ?: BUILD_NUMBER} to production\\nJob: ${env.JOB_NAME} #${env.BUILD_NUMBER}"}' \
+                        "\${SLACK_URL}" || true
+                """
+            }
+        }
+    }
+}
