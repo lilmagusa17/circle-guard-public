@@ -29,8 +29,8 @@ spec:
             - name: POSTGRES_DB
               value: circleguard
           readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "admin"]
+            tcpSocket:
+              port: 5432
             initialDelaySeconds: 10
             periodSeconds: 5
           volumeMounts:
@@ -215,8 +215,8 @@ spec:
           ports:
             - containerPort: 6379
           readinessProbe:
-            exec:
-              command: ["redis-cli", "ping"]
+            tcpSocket:
+              port: 6379
             initialDelaySeconds: 5
             periodSeconds: 5
 ---
