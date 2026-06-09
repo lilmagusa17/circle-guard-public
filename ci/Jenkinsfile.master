@@ -37,7 +37,7 @@ pipeline {
             steps {
                 script {
                     def tasks = SERVICES.collect { s -> ":services:circleguard-${s}:bootJar" }.join(' ')
-                    sh "./gradlew ${tasks} --no-daemon --parallel"
+                    sh "./gradlew ${tasks} --no-daemon --max-workers=2"
                 }
             }
         }
@@ -74,12 +74,9 @@ pipeline {
             }
             steps {
                 script {
-                    def testStages = SERVICES.collectEntries { service ->
-                        ["test-${service}": {
-                            sh "./gradlew :services:circleguard-${service}:test --no-daemon"
-                        }]
+                    for (service in SERVICES) {
+                        sh "./gradlew :services:circleguard-${service}:test --no-daemon --max-workers=2"
                     }
-                    parallel testStages
                 }
             }
             post {
