@@ -70,7 +70,7 @@ Databases: `circleguard_{auth,dashboard,form,promotion,identity}` created in eac
 | Phase 1 — Terraform | 🟢 Done | All 16 tasks complete |
 | Phase 2 — K8s Migration | 🟢 Done | All 12 tasks complete |
 | Phase 3 — Istio | 🟡 In progress | Tasks 3.1-3.10, 3.12-3.14 done; 3.11 (Kiali screenshot) pending browser access |
-| Phase 4 — CI/CD | 🟡 In progress | Jenkinsfiles + SonarQube + Trivy + semver + canary done; requires Jenkins credential setup (4.1) and live pipeline run (4.9, 4.10) |
+| Phase 4 — CI/CD | 🟡 In progress | 4.9 done (build #6 SUCCESS, 38min). 4.10 (master+canary) pending. 4.1 credentials loaded in Jenkins. |
 | Phase 5 — Patterns | 🟢 Done | All 5 tasks complete |
 | Phase 6 — Testing | 🔴 Not started | Needs Phase 4 |
 | Phase 7 — Observability | 🔴 Not started | Needs Phase 2+3 |
