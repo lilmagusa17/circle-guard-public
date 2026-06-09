@@ -70,8 +70,8 @@ Databases: `circleguard_{auth,dashboard,form,promotion,identity}` created in eac
 | Phase 1 — Terraform | 🟢 Done | All 16 tasks complete |
 | Phase 2 — K8s Migration | 🟢 Done | All 12 tasks complete |
 | Phase 3 — Istio | 🟡 In progress | Tasks 3.1-3.10, 3.12-3.14 done; 3.11 (Kiali screenshot) pending browser access |
-| Phase 4 — CI/CD | 🔴 Not started | Needs Phase 2+3 |
-| Phase 5 — Patterns | 🔴 Not started | Needs Phase 3 |
+| Phase 4 — CI/CD | 🟡 In progress | Jenkinsfiles + SonarQube + Trivy + semver + canary done; requires Jenkins credential setup (4.1) and live pipeline run (4.9, 4.10) |
+| Phase 5 — Patterns | 🟢 Done | All 5 tasks complete |
 | Phase 6 — Testing | 🔴 Not started | Needs Phase 4 |
 | Phase 7 — Observability | 🔴 Not started | Needs Phase 2+3 |
 | Phase 8 — Security | 🔴 Not started | Needs Phase 3+4 |
@@ -139,5 +139,5 @@ $env:USE_GKE_GCLOUD_AUTH_PLUGIN = "True"
 
 ## Next Action
 
-Phase 3.11 — Kiali screenshot (scale dev to 1 node, open browser, save screenshot to docs/diagrams/kiali-graph.png).
-Then Phase 4 — CI/CD pipeline updates.
+Phase 4.1 — Add Jenkins credentials manually (kubeconfig-dev/stage/production, sonarqube-token, slack-webhook).
+Then trigger dev pipeline (4.9) and master pipeline (4.10).
