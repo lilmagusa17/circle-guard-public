@@ -7,7 +7,7 @@ DRY_RUN=false
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
 
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-echo "Last tag: $LAST_TAG"
+echo "Last tag: $LAST_TAG" >&2
 
 # Parse current version components
 VERSION_CORE="${LAST_TAG#v}"
@@ -23,7 +23,7 @@ else
 fi
 
 if [[ -z "$COMMITS" ]]; then
-    echo "No commits since $LAST_TAG. Nothing to release."
+    echo "No commits since $LAST_TAG. Nothing to release." >&2
     echo "$LAST_TAG"
     exit 0
 fi
@@ -45,7 +45,7 @@ case "$BUMP" in
 esac
 
 NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-echo "New version: $NEW_TAG (bump: $BUMP)"
+echo "New version: $NEW_TAG (bump: $BUMP)" >&2
 
 if [[ "$DRY_RUN" == "true" ]]; then
     echo "$NEW_TAG"
@@ -102,12 +102,12 @@ NOTES_FILE="RELEASE_NOTES_${NEW_TAG}.md"
     fi
 } > "$NOTES_FILE"
 
-echo "Generated: $NOTES_FILE"
+echo "Generated: $NOTES_FILE" >&2
 cat "$NOTES_FILE"
 
 # Create git tag
 git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-echo "Tagged: $NEW_TAG"
+echo "Tagged: $NEW_TAG" >&2
 
 # Publish tag and release via GitHub API (requires GH_TOKEN env var)
 if [[ -n "${GH_TOKEN:-}" ]]; then
@@ -118,13 +118,13 @@ if [[ -n "${GH_TOKEN:-}" ]]; then
         -X POST \
         -f ref="refs/tags/${NEW_TAG}" \
         -f sha="${COMMIT_SHA}" \
-    && echo "Tag published via GitHub API"
+    && echo "Tag published via GitHub API" >&2
 
     gh release create "$NEW_TAG" \
         --repo "$REPO" \
         --notes-file "$NOTES_FILE" \
         --title "CircleGuard $NEW_TAG" \
-    && echo "GitHub Release created: $NEW_TAG"
+    && echo "GitHub Release created: $NEW_TAG" >&2
 fi
 
 # Save version for pipeline steps
