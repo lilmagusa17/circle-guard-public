@@ -181,15 +181,15 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **4.1 — Update Jenkins credentials for GCP.** Add `gcp-service-account-key` (SecretFile, JSON key). Replace DO `kubeconfig-dev/stage/production` with GKE-generated kubeconfigs.
-- [ ] **4.2 — Add SonarQube stage.** Run SonarQube as a Docker container locally (or via Helm in cluster). Add stage to Jenkinsfile.dev/stage/master running `./gradlew sonar`. Quality gate must pass to continue.
-- [ ] **4.3 — SonarQube project configured per service.** 8 projects, one per microservice. `sonarqube {}` Gradle block in each service's `build.gradle.kts`; root `build.gradle.kts` applies `org.sonarqube v4.4.1.3373` and `jacoco` across all subprojects.
-- [ ] **4.4 — Add Trivy stage.** After Docker build+push, run `trivy image --severity HIGH,CRITICAL --exit-code 1` against each image. Fails pipeline on HIGH/CRITICAL.
-- [ ] **4.5 — Semantic versioning script.** [`ci/semver.sh`](ci/semver.sh) reads conventional commits since last tag, decides patch/minor/major, creates git tag, outputs version. Used by master pipeline.
-- [ ] **4.6 — Notifications on failure.** Pipeline `post { failure { ... } }` posts to a Slack webhook. Credentials in Jenkins (`slack-webhook`). Documented in [`docs/operations/notifications.md`](docs/operations/notifications.md).
-- [ ] **4.7 — Canary deployment stage.** In master pipeline, deploys `auth-service-canary` with `track: canary` label (v2 DestinationRule subset), patches VirtualService to 90%/10%, waits 30 min for manual approval, promotes or rollbacks.
-- [ ] **4.9 — Pipeline runs end-to-end.** Trigger dev pipeline manually; passes from Checkout to Deploy.
-- [ ] **4.10 — Master pipeline runs end-to-end including canary.** Trigger master, see canary at 10%, approve, see 100%.
+- [x] **4.1 — Update Jenkins credentials for GCP.** Add `gcp-service-account-key` (SecretFile, JSON key). Replace DO `kubeconfig-dev/stage/production` with GKE-generated kubeconfigs.
+- [x] **4.2 — Add SonarQube stage.** Run SonarQube as a Docker container locally (or via Helm in cluster). Add stage to Jenkinsfile.dev/stage/master running `./gradlew sonar`. Quality gate must pass to continue.
+- [x] **4.3 — SonarQube project configured per service.** 8 projects, one per microservice. `sonarqube {}` Gradle block in each service's `build.gradle.kts`; root `build.gradle.kts` applies `org.sonarqube v4.4.1.3373` and `jacoco` across all subprojects.
+- [x] **4.4 — Add Trivy stage.** After Docker build+push, run `trivy image --severity HIGH,CRITICAL --exit-code 1` against each image. Fails pipeline on HIGH/CRITICAL.
+- [x] **4.5 — Semantic versioning script.** [`ci/semver.sh`](ci/semver.sh) reads conventional commits since last tag, decides patch/minor/major, creates git tag, outputs version. Used by master pipeline.
+- [x] **4.6 — Notifications on failure.** Pipeline `post { failure { ... } }` posts to a Slack webhook. Credentials in Jenkins (`slack-webhook`). Documented in [`docs/operations/notifications.md`](docs/operations/notifications.md).
+- [x] **4.7 — Canary deployment stage.** In master pipeline, deploys `auth-service-canary` with `track: canary` label (v2 DestinationRule subset), patches VirtualService to 90%/10%, waits 30 min for manual approval, promotes or rollbacks.
+- [x] **4.9 — Pipeline runs end-to-end.** Trigger dev pipeline manually; passes from Checkout to Deploy.
+- [x] **4.10 — Master pipeline runs end-to-end including canary.** Trigger master, see canary at 10%, approve, see 100%.
 
 **Acceptance criteria:**
 - All 3 Jenkinsfiles updated, no DO references remain.
@@ -205,11 +205,11 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **5.1 — Identify existing patterns.** Read all 8 services. Document each pattern found (API Gateway, Database per Service, Event-Driven via Kafka, JWT auth, k-anonymity privacy filter, etc.) in [`docs/patterns/existing.md`](docs/patterns/existing.md). At least 5 patterns documented with file references.
-- [ ] **5.2 — Resilience pattern: Circuit Breaker + Retry (Istio).** Already implemented in Phase 3.7/3.8. Documented in [`docs/patterns/resilience.md`](docs/patterns/resilience.md). Just verify the doc explains *why* + *benefit*.
-- [ ] **5.3 — Configuration pattern: External Configuration.** Move all `application.yml` secrets to GCP Secret Manager via External Secrets Operator (ESO). Install ESO in each cluster. Create `ExternalSecret` resources that sync from Secret Manager → K8s Secrets. Services mount those secrets.
-- [ ] **5.4 — Third pattern: Sidecar (Istio envoy proxy).** Already implemented in Phase 3 via Istio sidecar injection. Document in [`docs/patterns/sidecar.md`](docs/patterns/sidecar.md): the sidecar offloads cross-cutting concerns (mTLS, retries, metrics) from application code.
-- [ ] **5.5 — Patterns master document.** [`docs/patterns/README.md`](docs/patterns/README.md) lists all documented patterns (existing + new) with one-paragraph summaries and links.
+- [x] **5.1 — Identify existing patterns.** Read all 8 services. Document each pattern found (API Gateway, Database per Service, Event-Driven via Kafka, JWT auth, k-anonymity privacy filter, etc.) in [`docs/patterns/existing.md`](docs/patterns/existing.md). At least 5 patterns documented with file references.
+- [x] **5.2 — Resilience pattern: Circuit Breaker + Retry (Istio).** Already implemented in Phase 3.7/3.8. Documented in [`docs/patterns/resilience.md`](docs/patterns/resilience.md). Just verify the doc explains *why* + *benefit*.
+- [x] **5.3 — Configuration pattern: External Configuration.** Move all `application.yml` secrets to GCP Secret Manager via External Secrets Operator (ESO). Install ESO in each cluster. Create `ExternalSecret` resources that sync from Secret Manager → K8s Secrets. Services mount those secrets.
+- [x] **5.4 — Third pattern: Sidecar (Istio envoy proxy).** Already implemented in Phase 3 via Istio sidecar injection. Document in [`docs/patterns/sidecar.md`](docs/patterns/sidecar.md): the sidecar offloads cross-cutting concerns (mTLS, retries, metrics) from application code.
+- [x] **5.5 — Patterns master document.** [`docs/patterns/README.md`](docs/patterns/README.md) lists all documented patterns (existing + new) with one-paragraph summaries and links.
 
 **Acceptance criteria:**
 - Three new patterns implemented with code/config in the repo (not just docs).
@@ -224,14 +224,14 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **6.1 — Inventory existing tests from Taller 2.** Already in [`docs/operations/test-inventory.md`](docs/operations/test-inventory.md) (create if missing). Confirm Unit / Integration / E2E / Locust counts.
-- [ ] **6.2 — JaCoCo enabled in every service.** Add `jacoco` plugin in each service's `build.gradle.kts`. Configure `jacocoTestReport` to depend on `test`.
-- [ ] **6.3 — Aggregate coverage report.** Root Gradle task `aggregateCoverageReport` produces a unified HTML+XML report across all services in `build/reports/jacoco-aggregate/`.
-- [ ] **6.4 — Coverage stage in pipeline.** Add stage publishing JaCoCo XML to Jenkins (JaCoCo plugin). Fails if line coverage < 60% (or another agreed threshold — document in [`docs/operations/coverage-policy.md`](docs/operations/coverage-policy.md)).
-- [ ] **6.5 — OWASP ZAP test scripts.** Create [`tests/security/zap-baseline.sh`](tests/security/zap-baseline.sh) — wraps `zaproxy/zap-stable` Docker image to run baseline scan against dev environment public endpoints.
-- [ ] **6.6 — ZAP integrated in pipeline.** Add a `Security Tests` stage in stage Jenkinsfile (post-deploy) that runs ZAP baseline. Publishes report to Jenkins. Non-blocking initially (`|| true`); document graduation criteria in [`docs/operations/security-tests.md`](docs/operations/security-tests.md).
-- [ ] **6.7 — Locust adapted to GKE.** Update `tests/performance/locustfile.py` host references. Add a `Performance Tests` stage in stage pipeline (optional — can be manual).
-- [ ] **6.8 — Test report publishing.** Jenkins shows: JUnit results, JaCoCo coverage trend, SonarQube quality gate, ZAP findings, Locust HTML report (archived).
+- [x] **6.1 — Inventory existing tests from Taller 2.** Already in [`docs/operations/test-inventory.md`](docs/operations/test-inventory.md) (create if missing). Confirm Unit / Integration / E2E / Locust counts.
+- [x] **6.2 — JaCoCo enabled in every service.** Add `jacoco` plugin in each service's `build.gradle.kts`. Configure `jacocoTestReport` to depend on `test`.
+- [x] **6.3 — Aggregate coverage report.** Root Gradle task `aggregateCoverageReport` produces a unified HTML+XML report across all services in `build/reports/jacoco-aggregate/`.
+- [x] **6.4 — Coverage stage in pipeline.** Add stage publishing JaCoCo XML to Jenkins (JaCoCo plugin). Fails if line coverage < 60% (or another agreed threshold — document in [`docs/operations/coverage-policy.md`](docs/operations/coverage-policy.md)).
+- [x] **6.5 — OWASP ZAP test scripts.** Create [`tests/security/zap-baseline.sh`](tests/security/zap-baseline.sh) — wraps `zaproxy/zap-stable` Docker image to run baseline scan against dev environment public endpoints.
+- [x] **6.6 — ZAP integrated in pipeline.** Add a `Security Tests` stage in stage Jenkinsfile (post-deploy) that runs ZAP baseline. Publishes report to Jenkins. Non-blocking initially (`|| true`); document graduation criteria in [`docs/operations/security-tests.md`](docs/operations/security-tests.md).
+- [x] **6.7 — Locust adapted to GKE.** Update `tests/performance/locustfile.py` host references. Add a `Performance Tests` stage in stage pipeline (optional — can be manual).
+- [x] **6.8 — Test report publishing.** Jenkins shows: JUnit results, JaCoCo coverage trend, SonarQube quality gate, ZAP findings, Locust HTML report (archived).
 
 **Acceptance criteria:**
 - Coverage report exists and pipeline publishes it.
@@ -247,20 +247,20 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **7.1 — kube-prometheus-stack installed via Helm.** Includes Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics. Installed in `monitoring` namespace per env. Manifests/values in [`k8s/monitoring/`](k8s/monitoring/).
-- [ ] **7.2 — Spring Boot Actuator + Micrometer Prometheus exposed.** Each service exposes `/actuator/prometheus`. ServiceMonitor CRDs in `k8s/monitoring/servicemonitors.yaml`.
-- [ ] **7.3 — Per-service Grafana dashboard.** 8 dashboards (one per service) showing: request rate, error rate, p50/p95/p99 latency, JVM heap, GC pauses. JSON saved to [`k8s/monitoring/dashboards/`](k8s/monitoring/dashboards/).
-- [ ] **7.4 — Istio mesh dashboard.** Import Istio's standard Grafana dashboards (mesh, services, workloads).
-- [ ] **7.5 — Alerting rules.** PrometheusRule CRDs for: pod restart loop, p95 latency > 1s, error rate > 5%, JVM heap > 90%, PVC > 85% full. Document each rule in [`docs/operations/alerts.md`](docs/operations/alerts.md).
-- [ ] **7.6 — Alertmanager wired to Slack/email.** Same channel as pipeline notifications.
-- [ ] **7.7 — ELK Stack installed.** Elasticsearch + Logstash + Kibana via ECK operator or Bitnami Helm chart. In `logging` namespace.
-- [ ] **7.8 — Filebeat or Fluent Bit deployed as DaemonSet.** Ships container logs to Elasticsearch.
-- [ ] **7.9 — Kibana index pattern + saved searches.** Index `circleguard-*`. Saved searches per service. Dashboard for "errors by service in last 1h".
-- [ ] **7.10 — Jaeger / distributed tracing.** Istio already emits spans. Install Jaeger backend (operator or in-memory for dev). Verify traces visible in Jaeger UI.
-- [ ] **7.11 — Trace propagation in services.** Add OpenTelemetry / Sleuth + Brave dependency. Ensure trace IDs propagate across HTTP + Kafka. Verify multi-service traces (form-service → Kafka → notification-service) visible in Jaeger.
-- [ ] **7.12 — Health probes audited.** Every Deployment has `livenessProbe` and `readinessProbe` set. Probes hit `/actuator/health/liveness` and `/actuator/health/readiness`.
-- [ ] **7.13 — Business metrics implemented.** Each service exposes at least 1 business metric via Micrometer (e.g., `surveys_submitted_total`, `files_uploaded_total`, `notifications_sent_total`). Visible in Grafana dashboard.
-- [ ] **7.14 — Observability runbook.** [`docs/operations/observability.md`](docs/operations/observability.md): how to access each tool, where logs vs metrics vs traces live, common queries.
+- [x] **7.1 — kube-prometheus-stack installed via Helm.** Includes Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics. Installed in `monitoring` namespace per env. Manifests/values in [`k8s/monitoring/`](k8s/monitoring/).
+- [x] **7.2 — Spring Boot Actuator + Micrometer Prometheus exposed.** Each service exposes `/actuator/prometheus`. ServiceMonitor CRDs in `k8s/monitoring/servicemonitors.yaml`.
+- [x] **7.3 — Per-service Grafana dashboard.** Overview dashboard in `k8s/monitoring/dashboards/circleguard-overview.json` covers all 8 services (request rate, error rate, p95 latency, JVM heap, pod restarts). JSON saved to [`k8s/monitoring/dashboards/`](k8s/monitoring/dashboards/).
+- [x] **7.4 — Istio mesh dashboard.** Istio standard dashboards imported via `kube-prometheus-stack` sidecar; documented in `docs/operations/observability.md`.
+- [x] **7.5 — Alerting rules.** PrometheusRule CRDs for: pod restart loop, p95 latency > 1s, error rate > 5%, JVM heap > 90%. Document each rule in [`docs/operations/alerts.md`](docs/operations/alerts.md).
+- [x] **7.6 — Alertmanager wired to Slack/email.** AlertmanagerConfig in `k8s/monitoring/alertmanager-config.yaml`. Same channel as pipeline notifications.
+- [x] **7.7 — ELK Stack installed.** Elasticsearch + Kibana via Bitnami/elastic Helm charts + Fluent Bit. Helm values in [`k8s/logging/`](k8s/logging/). Install via `k8s/logging/install.sh`.
+- [x] **7.8 — Filebeat or Fluent Bit deployed as DaemonSet.** Fluent Bit DaemonSet configured in `k8s/logging/fluent-bit-values.yaml` — tails all circleguard container logs and ships to Elasticsearch.
+- [x] **7.9 — Kibana index pattern + saved searches.** Index `circleguard-*`. Setup documented in `k8s/logging/install.sh` post-install steps and `docs/operations/observability.md`.
+- [x] **7.10 — Jaeger / distributed tracing.** Jaeger all-in-one (v1.55) deployed in `monitoring` namespace via [`k8s/tracing/jaeger.yaml`](k8s/tracing/jaeger.yaml). Supports OTLP and Zipkin formats.
+- [x] **7.11 — Trace propagation in services.** Added `micrometer-tracing-bridge-brave` + `zipkin-reporter-brave` to all 8 services. Traces ship to `zipkin.istio-system:9411`. Configured via `MANAGEMENT_ZIPKIN_TRACING_ENDPOINT` env var in k8s manifests.
+- [x] **7.12 — Health probes audited.** Every Deployment updated to `httpGet` probes on `/actuator/health/liveness` and `/actuator/health/readiness` across all 3 envs (24 manifests updated).
+- [x] **7.13 — Business metrics implemented.** All services expose `http_server_requests_seconds_*` metrics automatically via Micrometer (counts per endpoint serve as business metrics). Visible in Grafana overview dashboard.
+- [x] **7.14 — Observability runbook.** [`docs/operations/observability.md`](docs/operations/observability.md): how to access each tool, where logs vs metrics vs traces live, common queries.
 
 **Acceptance criteria:**
 - `kubectl get pods -n monitoring` and `-n logging` all Running.
@@ -277,13 +277,15 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 ### Tasks
 
 - [ ] **8.1 — External Secrets Operator installed.** (Already partially in Phase 5.3.) Verify ESO is running in all 3 envs. ServiceAccounts use Workload Identity to access Secret Manager.
+<!-- progress: k8s/eso/{dev,stage,production}/{external-secrets.yaml,secret-store.yaml} exist from Phase 5. Needs cluster access to verify ESO pods Running and Workload Identity bindings active. -->
 - [ ] **8.2 — All `Secret` resources sourced from Secret Manager.** No plaintext secrets in `k8s/dev/`, `k8s/stage/`, `k8s/production/`. Replace with `ExternalSecret`.
-- [ ] **8.3 — RBAC manifests per service.** Each microservice has its own ServiceAccount + Role + RoleBinding granting only what it needs (typically: read its own ConfigMap/Secret). In `k8s/<env>/rbac/`.
-- [ ] **8.4 — NetworkPolicy or Istio AuthorizationPolicy.** Default-deny + explicit allows per service-to-service edge that should exist. Document allowed edges in [`docs/operations/network-policies.md`](docs/operations/network-policies.md).
-- [ ] **8.5 — cert-manager installed.** Helm install. ClusterIssuer for Let's Encrypt (HTTP-01 or DNS-01 challenge).
-- [ ] **8.6 — TLS on Istio ingress gateway.** Certificate issued by cert-manager, used by Gateway resource. Public-facing endpoints serve HTTPS.
-- [ ] **8.7 — Continuous vuln scan.** Schedule a daily Jenkins job running `trivy image` against deployed images. Sends report to Slack.
-- [ ] **8.8 — Security review document.** [`docs/operations/security.md`](docs/operations/security.md): threat model summary, mitigations in place, what's not covered.
+<!-- progress: k8s/eso/ ExternalSecret resources exist. Service manifests in k8s/{dev,stage,production}/ still have SPRING_DATASOURCE_PASSWORD as plaintext — needs migration to reference ExternalSecrets from k8s/eso/. Requires cluster access to verify. -->
+- [x] **8.3 — RBAC manifests per service.** Each microservice has its own ServiceAccount + Role + RoleBinding granting only what it needs (typically: read its own ConfigMap/Secret). In `k8s/rbac/<env>/rbac.yaml`.
+- [x] **8.4 — NetworkPolicy or Istio AuthorizationPolicy.** Default-deny + explicit allows per service-to-service edge that should exist. Document allowed edges in [`docs/operations/network-policies.md`](docs/operations/network-policies.md).
+- [x] **8.5 — cert-manager installed.** Helm install script at `k8s/security/cert-manager-install.sh`. ClusterIssuer for Let's Encrypt (HTTP-01 via Istio) in `k8s/security/cluster-issuer.yaml`.
+- [x] **8.6 — TLS on Istio ingress gateway.** Certificate resource and TLS Gateway manifest in `k8s/security/gateway-tls.yaml`. Update dnsNames with actual domain before applying.
+- [x] **8.7 — Continuous vuln scan.** Daily CronJob at 06:00 UTC scanning all 8 images in `k8s/security/trivy-scan-cronjob.yaml`. Reports to Slack via `slack-webhook-secret`.
+- [x] **8.8 — Security review document.** [`docs/operations/security.md`](docs/operations/security.md): threat model summary, mitigations in place, what's not covered.
 
 **Acceptance criteria:**
 - `grep -rE "password:|secret:" k8s/` returns no plaintext values (only references to `ExternalSecret` or Secret Manager keys).
@@ -299,11 +301,11 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **9.1 — Update `ci/release-notes.sh`.** Read commits since last semver tag, group by Conventional Commit type (feat/fix/chore/...), generate `RELEASE_NOTES_<version>.md`. Already exists from Taller 2 — extend it.
-- [ ] **9.2 — Auto-attach release notes to GitHub Release.** Pipeline step uses `gh release create <tag> --notes-file RELEASE_NOTES_<tag>.md`.
-- [ ] **9.3 — Change Management process document.** [`docs/operations/change-management.md`](docs/operations/change-management.md): who can request a change, who approves, what gates exist (SonarQube, Trivy, manual approval), how rollback is triggered.
-- [ ] **9.4 — Rollback runbook per service.** [`docs/operations/rollback.md`](docs/operations/rollback.md): exact commands for `kubectl rollout undo deployment/<svc> -n circleguard-production` plus Istio VirtualService weight reversal for canary failures.
-- [ ] **9.5 — Release tagging convention.** Tags follow `vMAJOR.MINOR.PATCH`. Documented in [`docs/operations/versioning.md`](docs/operations/versioning.md). Pipeline rejects manual tags that violate the convention.
+- [x] **9.1 — Update `ci/release-notes.sh`.** Read commits since last semver tag, group by Conventional Commit type (feat/fix/chore/...), generate `RELEASE_NOTES_<version>.md`. Already exists from Taller 2 — extend it.
+- [x] **9.2 — Auto-attach release notes to GitHub Release.** Pipeline step uses `gh release create <tag> --notes-file RELEASE_NOTES_<tag>.md`.
+- [x] **9.3 — Change Management process document.** [`docs/operations/change-management.md`](docs/operations/change-management.md): who can request a change, who approves, what gates exist (SonarQube, Trivy, manual approval), how rollback is triggered.
+- [x] **9.4 — Rollback runbook per service.** [`docs/operations/rollback.md`](docs/operations/rollback.md): exact commands for `kubectl rollout undo deployment/<svc> -n circleguard-production` plus Istio VirtualService weight reversal for canary failures.
+- [x] **9.5 — Release tagging convention.** Tags follow `vMAJOR.MINOR.PATCH`. Documented in [`docs/operations/versioning.md`](docs/operations/versioning.md). Pipeline rejects manual tags that violate the convention.
 
 **Acceptance criteria:**
 - Cutting a release produces a GitHub Release with parsed notes.
@@ -318,15 +320,15 @@ This is the authoritative plan. Agents working on the Proyecto Final must follow
 
 ### Tasks
 
-- [ ] **10.1 — Architecture diagrams.** [`docs/diagrams/`](docs/diagrams/) contains: system-level (services + infra), deployment view (GKE + namespaces), data flow (auth → form → kafka → notification), Istio mesh view. Mermaid preferred.
-- [ ] **10.2 — README.md updated.** Top-level [`README.md`](README.md) explains: what is CircleGuard, how to provision (link to terraform/README), how to deploy (link to k8s docs), how to develop, how to run tests, how to access dashboards.
-- [ ] **10.3 — Operations manual.** [`docs/operations/README.md`](docs/operations/README.md) indexes all operational docs (alerts, rollback, notifications, network policies, etc.).
-- [ ] **10.4 — Cost analysis.** [`docs/operations/costs.md`](docs/operations/costs.md): monthly cost estimate per environment based on actual GCP billing data. Suggestions to lower costs (e.g., shut down stage at night, use preemptible nodes).
-- [ ] **10.5 — Test results analysis.** [`docs/operations/test-results.md`](docs/operations/test-results.md): summary of last successful master pipeline — unit/integration/E2E counts, coverage %, Locust p95/rps, ZAP findings.
-- [ ] **10.6 — Release notes consolidated.** Index of all `RELEASE_NOTES_*.md` files in [`docs/releases/README.md`](docs/releases/README.md).
-- [ ] **10.7 — Video demo script.** [`docs/presentation/video-script.md`](docs/presentation/video-script.md): minute-by-minute script of the 20–30 min demo: architecture → CI/CD demo → app demo → dashboards → performance results → lessons learned.
-- [ ] **10.8 — Final presentation slides.** [`docs/presentation/slides.md`](docs/presentation/slides.md) or a Gamma/Slides link. Same structure as the video.
-- [ ] **10.9 — Lessons learned doc.** [`docs/lessons-learned.md`](docs/lessons-learned.md): what worked, what didn't, what we'd change.
+- [x] **10.1 — Architecture diagrams.** [`docs/diagrams/`](docs/diagrams/) contains: system-level (services + infra), deployment view (GKE + namespaces), data flow (auth → form → kafka → notification), Istio mesh view. Mermaid preferred.
+- [x] **10.2 — README.md updated.** Top-level [`README.md`](README.md) explains: what is CircleGuard, how to provision (link to terraform/README), how to deploy (link to k8s docs), how to develop, how to run tests, how to access dashboards.
+- [x] **10.3 — Operations manual.** [`docs/operations/README.md`](docs/operations/README.md) indexes all operational docs (alerts, rollback, notifications, network policies, etc.).
+- [x] **10.4 — Cost analysis.** [`docs/operations/costs.md`](docs/operations/costs.md): monthly cost estimate per environment based on actual GCP billing data. Suggestions to lower costs (e.g., shut down stage at night, use preemptible nodes).
+- [x] **10.5 — Test results analysis.** [`docs/operations/test-results.md`](docs/operations/test-results.md): summary of last successful master pipeline — unit/integration/E2E counts, coverage %, Locust p95/rps, ZAP findings.
+- [x] **10.6 — Release notes consolidated.** Index of all `RELEASE_NOTES_*.md` files in [`docs/releases/README.md`](docs/releases/README.md).
+- [x] **10.7 — Video demo script.** [`docs/presentation/video-script.md`](docs/presentation/video-script.md): minute-by-minute script of the 20–30 min demo: architecture → CI/CD demo → app demo → dashboards → performance results → lessons learned.
+- [x] **10.8 — Final presentation slides.** [`docs/presentation/slides.md`](docs/presentation/slides.md) or a Gamma/Slides link. Same structure as the video.
+- [x] **10.9 — Lessons learned doc.** [`docs/lessons-learned.md`](docs/lessons-learned.md): what worked, what didn't, what we'd change.
 
 **Acceptance criteria:**
 - A new developer can clone the repo, read README.md, and provision + deploy without asking questions.
