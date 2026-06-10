@@ -1,158 +1,258 @@
-# 🛡️ CircleGuard Monorepo
+# CircleGuard
 
 **Absolute Privacy. High-Speed Containment. Secure Campus.**
 
-CircleGuard is a state-of-the-art university contact tracing and fencing system designed to identify interconnected contact groups ("Circles") and apply rapid health fences while preserving individual anonymity.
+CircleGuard is a university health-monitoring and contact-tracing platform. It identifies interconnected contact groups ("Circles") and applies rapid health fences while preserving individual anonymity through k-anonymity and cryptographic identity vaulting.
 
 ---
 
-## 🌟 Vision & Mission
+## What is CircleGuard?
 
-Our vision is a university campus where health containment speed outpaces lab confirmation timelines without compromising student privacy. CircleGuard leverages campus-native intelligence—class schedules and WiFi infrastructure—to deliver a human-validated, graph-based protection ecosystem.
+CircleGuard runs 8 microservices on Google Kubernetes Engine (GKE) with full service-mesh encryption (Istio mTLS) and event-driven health status propagation via Apache Kafka.
 
-### Key Differentiators
-- **Privacy-as-Code**: Zero real-name exposure outside a secure Health Center vault.
-- **Recursive Containment**: Status promotion cascades (Suspect → Probable → Confirmed) that trigger in milliseconds.
-- **Campus Integration**: Smart check-ins using existing WiFi AP triangulation and Bluetooth Low Energy (BLE).
-
----
-
-## 📊 Success Metrics
-
-| Metric | Target | Measurement |
-|:---|:---|:---|
-| **Containment Speed** | < 60 Seconds | Automated test of promotion engine cascade |
-| **Privacy Compliance** | 100% Anonymity | Penetration test on graph database (Zero real names) |
-| **Check-in Adoption** | > 70% | Analytics on scheduled class contact validation |
-| **False Positive Rate** | < 15% | Post-fence surveys of actual vs. suspected contact |
-| **System Uptime** | 99.5% | 7:00 AM – 10:00 PM (Academic Peak Hours) |
+### Key capabilities
+- **Privacy-as-Code**: Zero real-name exposure outside a secure Health Center identity vault (FERPA-compliant).
+- **Recursive Containment**: Health status cascades (Suspect → Probable → Confirmed) trigger notifications in milliseconds using Neo4j graph traversals.
+- **Campus Integration**: Smart check-ins via QR-code campus entry validation backed by Redis session cache.
+- **Geospatial Analytics**: k-anonymity-filtered hotspot dashboard for Health Center staff.
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
-CircleGuard follows a **Microservice Architecture** built on a **Hybrid Data Model**.
+Eight Spring Boot 3.2.x microservices communicate over Istio mTLS (STRICT mode) with Kafka for async events.
 
-### Core Engine
-1. **Status Promotion Machine**: Uses **Neo4j** for recursive graph traversals to identify contacts within a 14-day temporal window.
-2. **Anonymization Vault**: A segregated **PostgreSQL** vault handles salted-hash identity mapping, compliant with **FERPA** regulations.
-3. **Event-Driven Core**: **Apache Kafka** manages asynchronous status changes, audit logs, and notification dispatches.
+| Service | Port | Responsibility |
+|---------|------|---------------|
+| `gateway-service` | 8087 | API gateway, QR validation, JWT routing, Redis sessions |
+| `auth-service` | 8180 | JWT authentication, LDAP integration |
+| `identity-service` | 8083 | Cryptographic identity vault |
+| `form-service` | 8086 | Health survey forms, Kafka producer |
+| `notification-service` | 8082 | Email/push notifications, Kafka consumer |
+| `promotion-service` | 8088 | Health status lifecycle, Neo4j graph, Redis cache |
+| `dashboard-service` | 8084 | Geospatial hotspot analytics (k-anonymity) |
+| `file-service` | 8085 | Certificate and document storage (S3-compatible) |
 
-### Services Directory
-- **Auth Service**: Dual-chain LDAP (University) / Local (Guest) auth with Dynamic RBAC.
-- **Identity Service**: Cryptographic vault for anonymizing real identities.
-- **Promotion Service**: The status engine (Recursive Graph Processing).
-- **Notification Service**: Multi-channel dispatcher (Push/Email/SMS).
-- **Form Service**: Dynamic health questionnaire engine.
-- **Gateway Service**: Campus entry validation via signed, time-limited QR tokens.
-- **Dashboard Service**: Geospatial hotspot analytics (Privacy-preserving).
-- **File Service**: Secure certificate and document storage (S3-compatible).
+**Infrastructure**: PostgreSQL 16, Apache Kafka (Confluent 7.6), Redis 7.2, Neo4j 5.26
 
----
+**Deployment**: GKE clusters (`circleguard-dev`, `circleguard-stage`, `circleguard-prod`) in `us-central1` with Istio 1.24.3, External Secrets Operator, and cert-manager.
 
-## 🛠️ Technical Stack
-
-| Layer | Technology | Rationale |
-|:---|:---|:---|
-| **Backend** | Spring Boot 4 / Java 21 | Enterprise-grade maturity & low-latency Jakarta EE support. |
-| **Graph DB** | Neo4j 5.26 | High-performance recursive traversals unreachable with SQL. |
-| **Relational DB**| PostgreSQL 16 | ACID compliant storage for identity and configuration. |
-| **Message Bus** | Apache Kafka 7.6 | Persistent, audit-trailed event log for status dispatches. |
-| **Caching** | Redis 7.2 | L2 distributed cache for rapid entry-gate status validation. |
-| **Mobile/Web** | Expo (React Native) | Unified codebase across iOS, Android, and Browser. |
-| **Infra** | Kubernetes | Orchestration for high availability and auto-scaling. |
+Full diagrams: [`docs/diagrams/system-overview.md`](docs/diagrams/system-overview.md) | [`docs/diagrams/deployment-view.md`](docs/diagrams/deployment-view.md)
 
 ---
 
-## 🗺️ Roadmap
+## Provisioning Infrastructure
 
-### Phase 1: MVP — The Intelligence Core (Current)
-- [x] Status Promotion Machine (Suspect → Probable → Confirmed).
-- [x] Temporal graph with 14-day TTL edges.
-- [x] Multi-channel fence notifications (Push/Email/SMS).
-- [ ] Health Center de-identification console.
+Requires: `terraform >= 1.6`, `gcloud`, `kubectl >= 1.28`, `helm >= 3.13`.
 
-### Phase 2: Growth — Spatial Intelligence
-- [ ] WiFi AP triangulation integration.
-- [ ] Campus entry validation (Gatekeeper) QR integration.
-- [ ] LMS integration for "Remote Attendance" status automation.
-
-### Phase 3: Vision — Full Ecosystem
-- [ ] Off-campus circle detection via P2P Bluetooth.
-- [ ] Global Health Dashboard with hotspot visualization.
-- [ ] Lab API bridge for automated test result ingestion.
-
----
-
-## 💻 Local Development
-
-### 1. Infrastructure
-Ensure Docker is installed, then start the middleware stack:
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+# 1. Authenticate with GCP
+gcloud auth login
+gcloud config set project tallerfinal-496702
+
+# 2. Enable required APIs (first time only)
+gcloud services enable container.googleapis.com compute.googleapis.com \
+    artifactregistry.googleapis.com secretmanager.googleapis.com \
+    iam.googleapis.com iamcredentials.googleapis.com \
+    cloudresourcemanager.googleapis.com --project=tallerfinal-496702
+
+# 3. Apply dev environment
+cd terraform/envs/dev
+terraform init
+terraform apply -auto-approve
+
+# 4. Get cluster credentials
+gcloud container clusters get-credentials circleguard-dev \
+    --region us-central1 --project tallerfinal-496702
 ```
-*Middleware includes: PostgreSQL, Neo4j, Kafka, Zookeeper, Redis, and OpenLDAP.*
 
-### 2. Build & Run
-CircleGuard uses Gradle for parallel builds across services:
+Full provisioning guide: [`terraform/README.md`](terraform/README.md)
+
+> Important: GCP quota `CPUS_ALL_REGIONS=12`. Only one cluster should have active nodes at a time. Scale others to 0 before scaling a cluster up.
+
+---
+
+## Deploying Services
+
+After provisioning and getting cluster credentials:
+
 ```bash
-# Start all microservices in parallel
+# Create namespaces
+kubectl apply -f k8s/namespaces.yaml
+
+# Deploy infrastructure (Kafka, PostgreSQL, Redis, Neo4j)
+kubectl apply -f k8s/infra/dev-infrastructure.yaml
+
+# Wait for infra pods to be Running
+kubectl get pods -n circleguard-dev -w
+
+# Apply RBAC
+kubectl apply -f k8s/rbac/dev/rbac.yaml
+
+# Deploy all 8 services
+kubectl apply -f k8s/dev/
+
+# Apply Istio resources
+kubectl apply -f k8s/istio/dev/
+
+# Apply External Secrets Operator resources
+kubectl apply -f k8s/eso/dev/
+
+# Verify all pods are Running
+kubectl get pods -n circleguard-dev
+```
+
+For production deployment, use the Jenkins master pipeline which runs the full CI/CD flow with SonarQube, Trivy, and canary deployment.
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Java 21, Docker Desktop
+- `./gradlew` wrapper (no local Gradle needed)
+
+### Build
+
+```bash
+# Build all services
+./gradlew build
+
+# Build a single service
+./gradlew :services:circleguard-auth-service:build
+
+# Build Docker JAR only (no tests)
+./gradlew bootJar
+```
+
+### Run locally
+
+```bash
+# Start local infrastructure
+docker-compose -f docker-compose.dev.yml up -d
+
+# Run all services in parallel
 ./gradlew bootRun --parallel
 
-# Start a specific service
-./gradlew :services:<service-name>:bootRun
+# Run a specific service
+./gradlew :services:circleguard-auth-service:bootRun
 ```
 
-### 3. API Exploration
-Every service exposes an OpenAPI 3.0 interface. Once running, visit:
-`http://localhost:<service-port>/swagger-ui/index.html`
+### API Documentation
+
+Each service exposes OpenAPI 3.0 when running locally:
+```
+http://localhost:<port>/swagger-ui/index.html
+```
 
 ---
 
-## 📱 Frontend Development
+## Running Tests
 
-The frontend is built using **Expo (React Native)**, supporting iOS, Android, and Web from a single codebase located in `/mobile`.
-
-### 1. Prerequisites
-Ensure you have Node.js installed and dependencies loaded:
 ```bash
-cd mobile
-npm install
+# All unit tests (all 8 services)
+./gradlew test
+
+# Single service tests
+./gradlew :services:circleguard-auth-service:test
+
+# Integration tests (requires Docker for Testcontainers)
+./gradlew test -Pintegration
+
+# Generate JaCoCo coverage report
+./gradlew test jacocoTestReport
+# Report: build/reports/jacoco/test/html/index.html
 ```
 
-### 2. Run the Application
-You can run the app in various modes depending on your target platform:
+### Performance Tests (Locust)
 
-| Platform | Command | Notes |
-|:---|:---|:---|
-| **Development Menu** | `npm run start` | Opens the Expo Go start-up menu. |
-| **Android** | `npm run android` | Requires Android Studio / Emulator or a connected device. |
-| **iOS** | `npm run ios` | Requires macOS with Xcode / Simulator installed. |
-| **Web Browser** | `npm run web` | Launches the dashboard/app in your default browser. |
-
-### 3. Testing
-To run frontend unit and component tests:
 ```bash
-npm run test
+cd tests/performance
+pip install locust
+locust -f locustfile.py --host=http://<ingress-ip>
+# Open http://localhost:8089 to configure and start the load test
+```
+
+### Security Tests (OWASP ZAP)
+
+```bash
+# Run ZAP baseline scan against dev environment
+bash tests/security/zap-baseline.sh
+# Report saved to tests/security/zap-report.html
 ```
 
 ---
 
-## 🧪 Testing
+## Accessing Dashboards
 
-We maintain high system integrity via multi-level testing:
+All dashboards are accessed via `kubectl port-forward` or `istioctl dashboard`.
 
-| Command | Scope |
-|:---|:---|
-| `./gradlew test` | Full system suite (Unit + Integration) |
-| `./gradlew :services:<name>:test` | Single service testing |
+```bash
+# Kiali — service mesh topology and traffic
+istioctl dashboard kiali -n istio-system
 
-**Note**: Integration tests use **Testcontainers** to spawn ephemeral Neo4j and PostgreSQL instances for zero-side-effect validation.
+# Grafana — metrics and dashboards
+kubectl port-forward -n monitoring svc/grafana 3000:3000
+# Open: http://localhost:3000 (admin/prom-operator)
+
+# Jaeger — distributed tracing
+istioctl dashboard jaeger
+
+# Kibana — log search
+kubectl port-forward -n logging svc/kibana-kibana 5601:5601
+# Open: http://localhost:5601
+
+# Prometheus — raw metrics
+kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
+# Open: http://localhost:9090
+
+# Jenkins — CI/CD pipelines
+# Jenkins runs as a local Docker container on the developer's machine
+# Open: http://localhost:8080
+```
 
 ---
 
-## 🔐 Privacy & Compliance
+## Key Documentation
 
-- **FERPA Compliance**: Student identities are never stored in the contact graph.
-- **Right to be Forgotten**: Users can trigger complete data purging via the Identity Vault.
-- **Temporal Privacy**: All contact edges are automatically purged after 14 days.
+| Document | Description |
+|----------|-------------|
+| [`terraform/README.md`](terraform/README.md) | Terraform module layout, provisioning guide, destroy commands |
+| [`docs/operations/README.md`](docs/operations/README.md) | Operations manual index |
+| [`docs/patterns/README.md`](docs/patterns/README.md) | Design patterns catalog |
+| [`docs/diagrams/system-overview.md`](docs/diagrams/system-overview.md) | System architecture diagram |
+| [`docs/diagrams/deployment-view.md`](docs/diagrams/deployment-view.md) | GKE deployment topology |
+| [`docs/diagrams/data-flow.md`](docs/diagrams/data-flow.md) | Key request/event flows |
+| [`docs/diagrams/istio-mesh.md`](docs/diagrams/istio-mesh.md) | Istio mesh topology |
+| [`docs/operations/change-management.md`](docs/operations/change-management.md) | CM process, approval gates |
+| [`docs/operations/rollback.md`](docs/operations/rollback.md) | Rollback commands and drill results |
+| [`docs/operations/security.md`](docs/operations/security.md) | Threat model and security posture |
+| [`docs/operations/versioning.md`](docs/operations/versioning.md) | SemVer convention and release process |
+
+---
+
+## CI/CD Pipelines
+
+Three Jenkins pipelines (run in local Jenkins Docker container):
+
+| Pipeline | Jenkinsfile | Trigger | Deploys To |
+|----------|-------------|---------|-----------|
+| DEV | `ci/Jenkinsfile.dev` | Branch push | `circleguard-dev` |
+| STAGE | `ci/Jenkinsfile.stage` | Manual | `circleguard-stage` |
+| MASTER | `ci/Jenkinsfile.master` | Manual / tag | `circleguard-production` (with canary) |
+
+All pipelines include: Build → SonarQube → Unit Tests → Integration Tests → Docker Build + Trivy scan → Push → Deploy.
+
+The master pipeline additionally runs: E2E Tests → Canary (10%, 30 min) → Prod Approval → Full Deploy → Semantic Version Tag → GitHub Release.
+
+---
+
+## Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Containment Speed | < 60 seconds from survey submission to fence notification |
+| Privacy Compliance | 100% — zero real names in the contact graph |
+| System Uptime | 99.5% during academic peak hours (07:00–22:00) |
+| False Positive Rate | < 15% |

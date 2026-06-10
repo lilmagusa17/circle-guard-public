@@ -1,0 +1,267 @@
+# RBAC manifests for circleguard-production namespace
+# One ServiceAccount + Role + RoleBinding per microservice
+# Each service account gets least-privilege access: read-only on configmaps and secrets
+
+# ──────────────────────────────────────────────
+# auth-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: auth-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: auth-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: auth-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# dashboard-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dashboard-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: dashboard-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: dashboard-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# file-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: file-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: file-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: file-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: file-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: file-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# form-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: form-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: form-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: form-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: form-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: form-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# gateway-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: gateway-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: gateway-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# identity-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: identity-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: identity-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: identity-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# notification-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: notification-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: notification-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: notification-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: notification-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# ──────────────────────────────────────────────
+# promotion-service
+# ──────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promotion-service-sa
+  namespace: circleguard-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: promotion-service-role
+  namespace: circleguard-production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: promotion-service-binding
+  namespace: circleguard-production
+subjects:
+  - kind: ServiceAccount
+    name: promotion-service-sa
+    namespace: circleguard-production
+roleRef:
+  kind: Role
+  name: promotion-service-role
+  apiGroup: rbac.authorization.k8s.io

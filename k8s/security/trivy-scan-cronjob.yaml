@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trivy-daily-scan
+  namespace: circleguard-production
+spec:
+  schedule: "0 6 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: trivy-scanner
+              image: aquasec/trivy:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  IMAGES="magusa17/circleguard-auth magusa17/circleguard-dashboard magusa17/circleguard-file magusa17/circleguard-form magusa17/circleguard-gateway magusa17/circleguard-identity magusa17/circleguard-notification magusa17/circleguard-promotion"
+                  REPORT=""
+                  for img in $IMAGES; do
+                    RESULT=$(trivy image --severity HIGH,CRITICAL --no-progress --format json $img:latest 2>/dev/null | \
+                      python3 -c "import json,sys; d=json.load(sys.stdin); vulns=sum(len(r.get('Vulnerabilities') or []) for r in d.get('Results',[])); print(f'{vulns} HIGH/CRITICAL vulns in $img')" 2>/dev/null || echo "scan failed for $img")
+                    REPORT="${REPORT}\n${RESULT}"
+                  done
+                  if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+                    curl -s -X POST -H 'Content-type: application/json' \
+                      --data "{\"text\":\"Daily Trivy Scan Report\n${REPORT}\"}" \
+                      "${SLACK_WEBHOOK_URL}" || true
+                  fi
+                  echo -e "Scan complete:${REPORT}"
+              env:
+                - name: SLACK_WEBHOOK_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: slack-webhook-secret
+                      key: webhook-url
+                      optional: true
+          restartPolicy: OnFailure

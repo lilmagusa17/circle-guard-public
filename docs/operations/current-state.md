@@ -2,7 +2,7 @@
 
 Live record of what is actually deployed. Update this file every time infrastructure changes.
 
-**Last updated:** 2026-06-08
+**Last updated:** 2026-06-09
 
 ---
 
@@ -72,11 +72,11 @@ Databases: `circleguard_{auth,dashboard,form,promotion,identity}` created in eac
 | Phase 3 — Istio | 🟡 In progress | Tasks 3.1-3.10, 3.12-3.14 done; 3.11 (Kiali screenshot) pending browser access |
 | Phase 4 — CI/CD | 🟡 In progress | Jenkinsfiles + SonarQube + Trivy + semver + canary done; requires Jenkins credential setup (4.1) and live pipeline run (4.9, 4.10) |
 | Phase 5 — Patterns | 🟢 Done | All 5 tasks complete |
-| Phase 6 — Testing | 🔴 Not started | Needs Phase 4 |
-| Phase 7 — Observability | 🔴 Not started | Needs Phase 2+3 |
-| Phase 8 — Security | 🔴 Not started | Needs Phase 3+4 |
-| Phase 9 — Change Mgmt | 🔴 Not started | Needs Phase 4 |
-| Phase 10 — Docs | 🔴 Not started | Needs all phases |
+| Phase 6 — Testing | 🟢 Done | JaCoCo aggregate, coverage gates in all 3 pipelines, ZAP script, Locust GKE update, all docs created |
+| Phase 7 — Observability | 🟢 Done | kube-prometheus-stack values, ServiceMonitors, PrometheusRules, Alertmanager, ELK, Fluent Bit, Jaeger, actuator+micrometer+tracing in all 8 services, probes updated to httpGet |
+| Phase 8 — Security | 🟡 In progress | RBAC+AuthorizationPolicy+cert-manager+TLS+Trivy CronJob+security docs done; 8.1/8.2 (ESO verification + plaintext removal) need cluster access |
+| Phase 9 — Change Mgmt | 🟢 Done | change-management, rollback, versioning docs complete; semver.sh already complete |
+| Phase 10 — Docs | 🟢 Done | All diagrams, README, operations index, costs, test-results, releases index, video script, slides, lessons learned |
 
 ## Scale Up Commands (before working)
 

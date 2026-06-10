@@ -1,0 +1,73 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: circleguard-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: circleguard.pods
+      interval: 30s
+      rules:
+        - alert: PodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total{namespace=~"circleguard-.*"}[5m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} in {{ $labels.namespace }} is crash-looping"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted more than once in the past 5 minutes."
+
+        - alert: PodNotReady
+          expr: kube_pod_status_ready{namespace=~"circleguard-.*", condition="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} in {{ $labels.namespace }} is not ready"
+            description: "Pod {{ $labels.pod }} has been in a not-ready state for more than 5 minutes."
+
+    - name: circleguard.http
+      interval: 30s
+      rules:
+        - alert: HighErrorRate
+          expr: >
+            sum(rate(http_server_requests_seconds_count{namespace=~"circleguard-.*",outcome="SERVER_ERROR"}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{namespace=~"circleguard-.*"}[5m]))
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High HTTP error rate in CircleGuard services"
+            description: "More than 5% of HTTP requests are returning server errors (5xx) in the past 5 minutes."
+
+        - alert: HighLatencyP95
+          expr: >
+            histogram_quantile(0.95,
+              sum(rate(http_server_requests_seconds_bucket{namespace=~"circleguard-.*"}[5m])) by (le, service)
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High P95 latency for service {{ $labels.service }}"
+            description: "95th percentile latency for {{ $labels.service }} exceeds 1 second over the past 10 minutes."
+
+    - name: circleguard.jvm
+      interval: 30s
+      rules:
+        - alert: HighJvmHeap
+          expr: >
+            sum(jvm_memory_used_bytes{namespace=~"circleguard-.*",area="heap"}) by (pod)
+            /
+            sum(jvm_memory_max_bytes{namespace=~"circleguard-.*",area="heap"}) by (pod)
+            > 0.90
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "JVM heap usage above 90% for pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} heap usage has been above 90% for more than 5 minutes. Risk of OutOfMemoryError."

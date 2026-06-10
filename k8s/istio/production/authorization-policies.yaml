@@ -1,0 +1,69 @@
+# Istio AuthorizationPolicy for circleguard-production namespace
+# Strategy: default-deny all traffic, then explicit allow per service-to-service edge
+
+# Default deny-all: any request not matched by an ALLOW policy is denied
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: circleguard-production
+spec: {}
+---
+# Allow gateway-service to reach all other services in the namespace
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-from-gateway
+  namespace: circleguard-production
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/circleguard-production/sa/gateway-service-sa"]
+---
+# Allow auth-service to be called by any service in the namespace (JWT validation)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-auth-service
+  namespace: circleguard-production
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["circleguard-production"]
+---
+# Allow all intra-namespace and istio-system traffic (covers Kafka consumers,
+# dashboard-service querying promotion-service, etc.)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-internal
+  namespace: circleguard-production
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["circleguard-production", "istio-system"]
+---
+# Allow Prometheus scraping from monitoring namespace
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: circleguard-production
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["monitoring"]
+      to:
+        - operation:
+            paths: ["/actuator/prometheus", "/actuator/health"]
