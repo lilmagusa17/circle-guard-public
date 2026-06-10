@@ -115,18 +115,22 @@ echo "Tagged: $NEW_TAG" >&2
 if [[ -n "${GH_TOKEN:-}" ]]; then
     REPO="lilmagusa17/circle-guard-public"
     COMMIT_SHA=$(git rev-parse HEAD)
+    API="https://api.github.com"
+    AUTH="Authorization: Bearer ${GH_TOKEN}"
 
-    gh api repos/${REPO}/git/refs \
-        -X POST \
-        -f ref="refs/tags/${NEW_TAG}" \
-        -f sha="${COMMIT_SHA}" \
-    && echo "Tag published via GitHub API" >&2
+    # Create tag ref via REST API (no gh CLI needed)
+    curl -s -X POST "${API}/repos/${REPO}/git/refs" \
+        -H "${AUTH}" -H "Content-Type: application/json" \
+        -d "{\"ref\":\"refs/tags/${NEW_TAG}\",\"sha\":\"${COMMIT_SHA}\"}" \
+        > /dev/null && echo "Tag published via GitHub API" >&2
 
-    gh release create "$NEW_TAG" \
-        --repo "$REPO" \
-        --notes-file "$NOTES_FILE" \
-        --title "CircleGuard $NEW_TAG" \
-    && echo "GitHub Release created: $NEW_TAG" >&2
+    # Create GitHub Release
+    NOTES_BODY=$(cat "$NOTES_FILE" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null \
+        || cat "$NOTES_FILE" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/' | tr -d '\n')
+    curl -s -X POST "${API}/repos/${REPO}/releases" \
+        -H "${AUTH}" -H "Content-Type: application/json" \
+        -d "{\"tag_name\":\"${NEW_TAG}\",\"name\":\"CircleGuard ${NEW_TAG}\",\"body\":$(cat "$NOTES_FILE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null || echo '""'),\"draft\":false,\"prerelease\":false}" \
+        > /dev/null && echo "GitHub Release created: $NEW_TAG" >&2
 fi
 
 # Save version for pipeline steps
