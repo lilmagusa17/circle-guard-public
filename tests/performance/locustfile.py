@@ -2,12 +2,25 @@
 Locust Performance Tests - CircleGuard
 Simula carga real en form-service, gateway-service y promotion-service.
 
-Ejecución:
-  locust -f locustfile.py --headless -u 50 -r 5 -t 60s \
-         --host=http://<service-url> --csv=results/circleguard
+Ejecución local (Kubernetes/GKE):
+  TARGET_SERVICE=form \
+  FORM_SERVICE_URL=http://34.58.31.128 \
+  locust -f tests/performance/locustfile.py --headless -u 50 -r 5 -t 60s \
+         --csv=results/circleguard
+
+  TARGET_SERVICE=gateway \
+  GATEWAY_SERVICE_URL=http://34.58.31.128 \
+  locust -f tests/performance/locustfile.py --headless -u 100 -r 10 -t 60s
+
+  TARGET_SERVICE=promotion \
+  PROMOTION_SERVICE_URL=http://34.58.31.128 \
+  locust -f tests/performance/locustfile.py --headless -u 50 -r 5 -t 60s
 
 Variables de entorno:
-  TARGET_SERVICE = form | gateway | promotion  (default: form)
+  TARGET_SERVICE      = form | gateway | promotion  (default: form)
+  FORM_SERVICE_URL    = URL base para form-service    (default: http://34.58.31.128)
+  GATEWAY_SERVICE_URL = URL base para gateway-service (default: http://34.58.31.128)
+  PROMOTION_SERVICE_URL = URL base para promotion-service (default: http://34.58.31.128)
 """
 
 import os
@@ -29,7 +42,7 @@ class FormServiceUser(HttpUser):
     Caso de uso: oleada de encuestas al inicio de jornada.
     """
     wait_time = between(1, 3)
-    host = os.getenv("FORM_SERVICE_URL", "http://form-service:8080")
+    host = os.getenv("FORM_SERVICE_URL", "http://34.58.31.128")
 
     @task(3)
     def submit_survey_no_symptoms(self):
@@ -94,7 +107,7 @@ class GatewayServiceUser(HttpUser):
     Caso de uso: hora pico de entrada al campus (100s de validaciones/min).
     """
     wait_time = between(0.5, 1.5)
-    host = os.getenv("GATEWAY_SERVICE_URL", "http://gateway-service:8080")
+    host = os.getenv("GATEWAY_SERVICE_URL", "http://34.58.31.128")
 
     # Token JWT de prueba (firmado con secreto de test)
     VALID_TOKEN = os.getenv(
@@ -141,7 +154,7 @@ class PromotionServiceUser(HttpUser):
     Caso de uso: múltiples access points enviando señales concurrentemente.
     """
     wait_time = between(0.2, 1.0)
-    host = os.getenv("PROMOTION_SERVICE_URL", "http://promotion-service:8080")
+    host = os.getenv("PROMOTION_SERVICE_URL", "http://34.58.31.128")
 
     @task(5)
     def report_location_signal(self):

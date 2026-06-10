@@ -1,0 +1,35 @@
+replicas: 1
+minimumMasterNodes: 1
+esMajorVersion: "8"
+
+esJavaOpts: "-Xmx512m -Xms512m"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "1Gi"
+  limits:
+    cpu: "500m"
+    memory: "1.5Gi"
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+
+persistence:
+  enabled: true
+
+antiAffinity: "soft"
+tolerations: []
+
+sysctlVmMaxMapCount: 262144
+
+esConfig:
+  elasticsearch.yml: |
+    xpack.security.enabled: false
+    xpack.security.http.ssl.enabled: false
+    xpack.security.transport.ssl.enabled: false
+
+clusterName: "circleguard-logs"

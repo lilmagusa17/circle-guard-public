@@ -89,6 +89,26 @@ pipeline {
             }
         }
 
+        stage('Coverage Report') {
+            steps {
+                script {
+                    sh './gradlew aggregateCoverageReport --no-daemon || true'
+                }
+            }
+            post {
+                always {
+                    jacoco(
+                        execPattern: 'services/**/build/jacoco/*.exec',
+                        classPattern: 'services/**/build/classes/java/main',
+                        sourcePattern: 'services/**/src/main/java',
+                        exclusionPattern: '**/*Test*,**/*Application*',
+                        minimumLineCoverage: '0',
+                        changeBuildStatus: false
+                    )
+                }
+            }
+        }
+
         stage('Docker Build & Trivy Scan') {
             steps {
                 withCredentials([usernamePassword(

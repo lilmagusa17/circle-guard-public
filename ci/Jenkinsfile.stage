@@ -96,6 +96,26 @@ pipeline {
             }
         }
 
+        stage('Coverage Report') {
+            steps {
+                script {
+                    sh './gradlew aggregateCoverageReport --no-daemon || true'
+                }
+            }
+            post {
+                always {
+                    jacoco(
+                        execPattern: 'services/**/build/jacoco/*.exec',
+                        classPattern: 'services/**/build/classes/java/main',
+                        sourcePattern: 'services/**/src/main/java',
+                        exclusionPattern: '**/*Test*,**/*Application*',
+                        minimumLineCoverage: '40',
+                        changeBuildStatus: true
+                    )
+                }
+            }
+        }
+
         stage('Integration Tests') {
             environment {
                 DOCKER_HOST                           = 'unix:///tmp/docker-proxy.sock'

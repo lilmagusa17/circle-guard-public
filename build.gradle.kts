@@ -58,3 +58,29 @@ subprojects {
         }
     }
 }
+
+tasks.register<JacocoReport>("aggregateCoverageReport") {
+    dependsOn(subprojects.map { it.tasks.withType<Test>() })
+
+    val allExecFiles = subprojects.flatMap { proj ->
+        proj.tasks.withType<org.gradle.testing.jacoco.tasks.JacocoReport>().map { it.executionData }
+    }
+    executionData.setFrom(allExecFiles)
+
+    val allSourceDirs = subprojects.map { proj ->
+        proj.file("src/main/java")
+    }.filter { it.exists() }
+    sourceDirectories.setFrom(allSourceDirs)
+
+    val allClassDirs = subprojects.flatMap { proj ->
+        proj.tasks.withType<JavaCompile>().map { it.destinationDirectory }
+    }
+    classDirectories.setFrom(allClassDirs)
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco-aggregate/jacocoTestReport.xml"))
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco-aggregate/html"))
+    }
+}

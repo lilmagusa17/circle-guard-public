@@ -1,0 +1,43 @@
+# Certificate resource — cert-manager issues a cert for the ingress IP/hostname.
+# NOTE: Let's Encrypt requires a valid FQDN. For IP-only access, use self-signed.
+# Update spec.dnsNames with actual domain before applying.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: circleguard-tls
+  namespace: istio-system
+spec:
+  secretName: circleguard-tls-cert
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - circleguard.example.com
+---
+# Updated Istio Gateway to serve HTTPS with cert-manager TLS
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: circleguard-gateway-tls
+  namespace: circleguard-production
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: circleguard-tls-cert
+      hosts:
+        - circleguard.example.com
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - circleguard.example.com
+      tls:
+        httpsRedirect: true
