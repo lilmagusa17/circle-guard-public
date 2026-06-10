@@ -106,6 +106,8 @@ echo "Generated: $NOTES_FILE" >&2
 cat "$NOTES_FILE"
 
 # Create git tag
+git config user.email "ci@circleguard.local" 2>/dev/null || true
+git config user.name "CircleGuard CI" 2>/dev/null || true
 git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
 echo "Tagged: $NEW_TAG" >&2
 
