@@ -1,0 +1,44 @@
+# In-cluster load generator (fortio) for chaos verification.
+# Runs INSIDE circleguard-dev so it goes through each service's Istio sidecar —
+# this is what makes the delay/stress on a specific service show up in that
+# service's own Grafana metrics. Has the istio sidecar injected like any pod.
+#
+# Apply once, then exec into it to drive load at the service under test:
+#   kubectl apply -f tests/chaos/load-generator.yaml
+#   kubectl wait --for=condition=Ready pod/fortio-load -n circleguard-dev --timeout=120s
+#
+# Drive load (examples):
+#   # form-service, 20 req/s for 13 min (covers the 12m network-delay experiment)
+#   kubectl exec -n circleguard-dev fortio-load -c fortio -- \
+#     fortio load -qps 20 -t 13m -timeout 5s http://form-service:8086/actuator/health
+#
+#   # promotion-service, 20 req/s for 8 min (covers the 7m cpu-stress experiment)
+#   kubectl exec -n circleguard-dev fortio-load -c fortio -- \
+#     fortio load -qps 20 -t 8m -timeout 5s http://promotion-service:8088/actuator/health
+#
+#   # auth-service, quick burst around the pod-kill experiment
+#   kubectl exec -n circleguard-dev fortio-load -c fortio -- \
+#     fortio load -qps 20 -t 90s -timeout 5s http://auth-service:8180/actuator/health
+#
+# fortio prints a latency histogram + return-code breakdown at the end — that
+# output IS your evidence (p50/p95/p99 and how many non-200s during the fault).
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fortio-load
+  namespace: circleguard-dev
+  labels:
+    app: fortio-load
+spec:
+  containers:
+    - name: fortio
+      image: fortio/fortio:latest
+      command: ["fortio", "server"]
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "256Mi"

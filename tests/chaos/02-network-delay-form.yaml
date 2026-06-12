@@ -1,14 +1,12 @@
-# Experiment 2 — 500ms network latency injected on form-service.
-# Hypothesis: a 500ms delay pushes form-service p95 latency above the
-# HighLatencyP95 alert threshold. Because perTryTimeout is 2s, requests still
-# succeed (no retries storm), but the latency spike is clearly visible in
-# Grafana and the alert fires — proving observability catches degradation
-# before it becomes an outage.
+# Experiment 2 (v2) — 500ms network latency on form-service.
+# IMPORTANT: HighLatencyP95 alert has `for: 10m`. The fault MUST run longer than
+# that to reach Firing, so duration is 12m. If you only want to see the p95 spike
+# in Grafana (not the alert firing), 2-3m is enough — but for the alert, use 12m.
 #
 # What to watch:
-#   - Grafana p95 panel for form-service: jumps ~500ms
-#   - Alertmanager: HighLatencyP95 fires for form-service
-#   - No increase in 5xx (latency, not errors)
+#   - Grafana p95 panel for form-service: jumps ~500ms within seconds
+#   - Alertmanager: HighLatencyP95 -> Pending (immediately) -> Firing (after 10m)
+#   - Requests still succeed (perTryTimeout 2s > 500ms delay): no 5xx increase
 ---
 apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
@@ -27,5 +25,5 @@ spec:
     latency: "500ms"
     correlation: "50"
     jitter: "100ms"
-  duration: "2m"
+  duration: "12m"
   direction: to
