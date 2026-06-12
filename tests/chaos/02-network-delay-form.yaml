@@ -1,0 +1,29 @@
+# Experiment 2 (v2) — 500ms network latency on form-service.
+# IMPORTANT: HighLatencyP95 alert has `for: 10m`. The fault MUST run longer than
+# that to reach Firing, so duration is 12m. If you only want to see the p95 spike
+# in Grafana (not the alert firing), 2-3m is enough — but for the alert, use 12m.
+#
+# What to watch:
+#   - Grafana p95 panel for form-service: jumps ~500ms within seconds
+#   - Alertmanager: HighLatencyP95 -> Pending (immediately) -> Firing (after 10m)
+#   - Requests still succeed (perTryTimeout 2s > 500ms delay): no 5xx increase
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-form
+  namespace: circleguard-dev
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - circleguard-dev
+    labelSelectors:
+      app: form-service
+  delay:
+    latency: "500ms"
+    correlation: "50"
+    jitter: "100ms"
+  duration: "12m"
+  direction: to

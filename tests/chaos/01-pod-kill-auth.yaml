@@ -1,0 +1,26 @@
+# Experiment 1 — Pod kill on auth-service.
+# Hypothesis: killing the single auth-service pod causes in-flight requests to
+# fail with 5xx/connect-failure. Istio retries (3 attempts, 2s perTryTimeout)
+# absorb the gap, and outlierDetection ejects the dead endpoint until the new
+# pod is Ready. End-user error rate stays low; the system self-heals.
+#
+# What to watch:
+#   - Grafana: auth-service request rate dips, brief 5xx blip, recovers
+#   - kubectl get pods -n circleguard-dev -w  → pod recreated
+#   - Istio retries visible in istio_requests_total{response_flags!=""}
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-kill-auth
+  namespace: circleguard-dev
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - circleguard-dev
+    labelSelectors:
+      app: auth-service
+  # Run once. Use the schedule wrapper (04-schedule-*.yaml) for repeated runs.
+  duration: "30s"

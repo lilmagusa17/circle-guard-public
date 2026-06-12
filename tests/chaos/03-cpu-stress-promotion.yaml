@@ -1,0 +1,29 @@
+# Experiment 3 (v2) — CPU stress on promotion-service.
+# REQUIRES the patched promotion-service.yaml (CPU limit 500m). Without a limit
+# the stress can't trigger a restart.
+# IMPORTANT: PodNotReady/PodCrashLooping alerts have `for: 5m`. To see them Fire,
+# the fault must outlast that window -> duration 7m. The pod RESTART itself is
+# visible within ~1m (liveness failureThreshold 3 x 15s); the ALERT needs 5m+.
+#
+# What to watch:
+#   - kubectl get pods -n circleguard-dev -w  -> promotion-service RESTARTS +1 (~1min)
+#   - Grafana: promotion-service CPU pegged near 500m limit
+#   - Alertmanager: PodNotReady -> Firing after 5m (and PodCrashLooping if it flaps)
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-promotion
+  namespace: circleguard-dev
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - circleguard-dev
+    labelSelectors:
+      app: promotion-service
+  stressors:
+    cpu:
+      workers: 4
+      load: 100
+  duration: "7m"
