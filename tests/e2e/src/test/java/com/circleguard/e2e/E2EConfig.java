@@ -8,17 +8,11 @@ public class E2EConfig {
 
     private static final String ENV = System.getProperty("env", "local");
 
-    private static String base(String service) {
-        return switch (ENV) {
-            case "stage"  -> "http://" + service + ".circleguard-stage.svc.cluster.local:8080";
-            case "master" -> "http://" + service + ".circleguard-master.svc.cluster.local:8080";
-            case "dev"    -> "http://" + service + ".circleguard-dev.svc.cluster.local:8080";
-            default       -> localUrl(service); // "local" → localhost con puertos reales
-        };
-    }
-
-    private static String localUrl(String service) {
-        int port = switch (service) {
+    // Services listen on their real application ports in every environment
+    // (the Kubernetes Service port == targetPort == app port). Only the host
+    // differs between local port-forwards and in-cluster DNS.
+    private static int port(String service) {
+        return switch (service) {
             case "identity-service"     -> 8083;
             case "notification-service" -> 8082;
             case "file-service"         -> 8085;
@@ -27,7 +21,19 @@ public class E2EConfig {
             case "promotion-service"    -> 8088;
             default -> 8080;
         };
-        return "http://localhost:" + port;
+    }
+
+    private static String base(String service) {
+        int port = port(service);
+        return switch (ENV) {
+            // In-cluster DNS (use when running E2E from a pod inside the mesh).
+            case "stage"      -> "http://" + service + ".circleguard-stage.svc.cluster.local:" + port;
+            case "master",
+                 "production" -> "http://" + service + ".circleguard-production.svc.cluster.local:" + port;
+            case "dev"        -> "http://" + service + ".circleguard-dev.svc.cluster.local:" + port;
+            // "local" → localhost with real ports (kubectl port-forward or local stack).
+            default           -> "http://localhost:" + port;
+        };
     }
 
     public static final String FORM_SERVICE      = base("form-service");

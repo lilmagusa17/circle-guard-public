@@ -132,20 +132,6 @@ pipeline {
             }
         }
 
-        stage('E2E Tests') {
-            steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                    sh './gradlew test -Pe2e --no-daemon'
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true,
-                          testResults: 'services/**/build/test-results/test/*.xml'
-                }
-            }
-        }
-
         stage('Docker Build & Trivy Scan') {
             steps {
                 withCredentials([usernamePassword(
@@ -236,6 +222,40 @@ pipeline {
                                 --kubeconfig=${KUBECONFIG_FILE} || true
                         """
                     }
+                }
+            }
+        }
+
+        // E2E runs POST-DEPLOY against the live circleguard-production services.
+        // RestAssured (env=local) hits localhost:<realPort>; we port-forward each
+        // service into the Jenkins container first. Non-blocking (UNSTABLE) until proven.
+        // NOTE: the namespace enforces STRICT mTLS. If Envoy resets these plaintext
+        // port-forward connections, run E2E from an in-cluster Job (sidecar does mTLS)
+        // or temporarily set PeerAuthentication to PERMISSIVE for the test window.
+        stage('E2E Tests (post-deploy)') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-production', variable: 'KUBECONFIG_FILE')]) {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        sh '''
+                            set -e
+                            export KUBECONFIG="${KUBECONFIG_FILE}"
+                            pkill -f "kubectl port-forward" || true
+                            kubectl port-forward -n circleguard-production svc/gateway-service 8087:8087 > /tmp/pf-gateway.log 2>&1 &
+                            kubectl port-forward -n circleguard-production svc/identity-service 8083:8083 > /tmp/pf-identity.log 2>&1 &
+                            kubectl port-forward -n circleguard-production svc/form-service 8086:8086 > /tmp/pf-form.log 2>&1 &
+                            kubectl port-forward -n circleguard-production svc/promotion-service 8088:8088 > /tmp/pf-promotion.log 2>&1 &
+                            kubectl port-forward -n circleguard-production svc/file-service 8085:8085 > /tmp/pf-file.log 2>&1 &
+                            sleep 10
+                            ./gradlew test -Pe2e --no-daemon
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    sh 'pkill -f "kubectl port-forward" || true'
+                    junit allowEmptyResults: true,
+                          testResults: 'tests/e2e/build/test-results/test/*.xml'
                 }
             }
         }
