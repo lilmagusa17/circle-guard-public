@@ -1,0 +1,31 @@
+# Experiment 2 — 500ms network latency injected on form-service.
+# Hypothesis: a 500ms delay pushes form-service p95 latency above the
+# HighLatencyP95 alert threshold. Because perTryTimeout is 2s, requests still
+# succeed (no retries storm), but the latency spike is clearly visible in
+# Grafana and the alert fires — proving observability catches degradation
+# before it becomes an outage.
+#
+# What to watch:
+#   - Grafana p95 panel for form-service: jumps ~500ms
+#   - Alertmanager: HighLatencyP95 fires for form-service
+#   - No increase in 5xx (latency, not errors)
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-form
+  namespace: circleguard-dev
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - circleguard-dev
+    labelSelectors:
+      app: form-service
+  delay:
+    latency: "500ms"
+    correlation: "50"
+    jitter: "100ms"
+  duration: "2m"
+  direction: to

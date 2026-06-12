@@ -1,0 +1,28 @@
+# Experiment 3 — CPU stress on promotion-service.
+# Hypothesis: saturating CPU makes liveness probes slow/fail, Kubernetes
+# restarts the pod, and the restart is caught by the PodCrashLooping /
+# PodNotReady alerts. Verifies that resource exhaustion is detected and
+# self-corrected rather than silently degrading the service.
+#
+# What to watch:
+#   - kubectl get pods -n circleguard-dev → promotion-service RESTARTS increments
+#   - Alertmanager: PodNotReady (and PodCrashLooping if it flaps) fires
+#   - Grafana: CPU panel for promotion-service pegged near limit
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-promotion
+  namespace: circleguard-dev
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - circleguard-dev
+    labelSelectors:
+      app: promotion-service
+  stressors:
+    cpu:
+      workers: 4
+      load: 100
+  duration: "2m"
