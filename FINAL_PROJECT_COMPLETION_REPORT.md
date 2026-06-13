@@ -1,7 +1,8 @@
 # CircleGuard — Proyecto Final IngeSoft V — Completion Report
 
-**Date:** 2026-06-12
-**Repository (fork):** https://github.com/lilmagusa17/circle-guard-public
+Mariana Agudelo Salazar 
+Natalia Vargas
+
 **Stack:** Spring Boot 3.2.x · Java 21 · Gradle Kotlin DSL · Docker · Jenkins · GKE (GCP) · Terraform · Istio · Chaos Mesh
 **GCP Project:** `circleguard-final` · Region `us-central1`
 
