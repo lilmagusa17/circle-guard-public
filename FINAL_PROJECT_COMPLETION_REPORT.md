@@ -1,7 +1,7 @@
 # CircleGuard — Proyecto Final IngeSoft V — Completion Report
 
-Mariana Agudelo Salazar 
-Natalia Vargas
+* Mariana Agudelo Salazar 
+* Natalia Vargas
 
 **Stack:** Spring Boot 3.2.x · Java 21 · Gradle Kotlin DSL · Docker · Jenkins · GKE (GCP) · Terraform · Istio · Chaos Mesh
 **GCP Project:** `circleguard-final` · Region `us-central1`
