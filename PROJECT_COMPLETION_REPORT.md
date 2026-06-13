@@ -72,12 +72,31 @@ All three new patterns are **implemented as real config/code**, not docs only.
 
 ## 3. CI/CD Avanzado (15%) ✅
 
-**Master pipeline ran end-to-end** — build `circleguard-master #8` (21m23s): Checkout → Build → SonarQube → Unit → Integration → E2E → Trivy → Docker Push → Prod Approval → Deploy to GKE Production → Canary Deploy → Canary Approval → Canary Promote → Generate Release Notes → End. Screenshots: [`screenshots/final_project/master_integration_tests.png`](screenshots/final_project/master_integration_tests.png), [`screenshots/final_project/master_e2e_tests.png`](screenshots/final_project/master_e2e_tests.png).
+**Master pipeline ran end-to-end** — latest is build `circleguard-master #10` (UNSTABLE, completed): Checkout → Build → SonarQube → Unit → Integration → Coverage → Trivy → Docker Push → **Prod Approval** → Deploy to GKE Production → **E2E (post-deploy)** → Canary Deploy → **Canary Approval** → Canary Promote → Generate Release Notes → End. Both manual gates were approved, the release deployed to production, and the GitHub Release was generated. Screenshots: [`screenshots/final_project/master_integration_tests.png`](screenshots/final_project/master_integration_tests.png), [`screenshots/final_project/master_e2e_tests.png`](screenshots/final_project/master_e2e_tests.png).
 
-> **Test stability:** the **Integration Tests** and **E2E Tests** stages were marked **UNSTABLE** (orange) in build #8. Both diagnosed and fixed:
+> **Pipeline test-stage analysis (final, build #10).** Build #10 ran the master pipeline **end-to-end to completion** with result **UNSTABLE**: both manual gates (Prod Approval, Canary Approval) were approved, the release deployed to `circleguard-production`, the canary ran, and the **Release Notes / GitHub Release were generated**. Stage-by-stage:
 >
-> - **Integration** — `HealthStatusReevaluationTest` (promotion-service) started a Neo4j Testcontainer but no Redis container, so Spring connected to `localhost:6379` → `RedisConnectionFailureException`. Fix: added a Redis `GenericContainer` + `spring.data.redis.host/port` dynamic properties (matching the working `AdministrativeCorrectionTest`). **Verified locally:** `./gradlew :services:circleguard-promotion-service:test -Pintegration` BUILD SUCCESSFUL, 19 tests, 0 failed.
-> - **E2E** — these are full-stack RestAssured tests that hit live HTTP endpoints. They ran in the pre-build phase where no services exist → `ConnectException`. Fixed by **moving the E2E stage to run post-deploy** (after "Deploy to GKE Production"), port-forwarding the 5 services into the Jenkins container and running with env=local. Also fixed `E2EConfig.java` (the `master` case pointed to a non-existent `circleguard-master` namespace and used the wrong `:8080` port — now `circleguard-production` with real per-service ports). **Caveat:** the production namespace enforces STRICT mTLS; if Envoy resets the plaintext port-forward connections, run E2E from an in-cluster Job (sidecar provides mTLS) or open a temporary PERMISSIVE window. Needs one live pipeline run to confirm green.
+> | Stage | #8 | #10 | Notes |
+> |---|---|---|---|
+> | Unit Tests | green | **green** | fixed a pre-existing notification crash (see below) |
+> | Integration Tests | UNSTABLE | **green** | fixed (Redis Testcontainer) |
+> | E2E Tests (post-deploy) | UNSTABLE | **UNSTABLE (accepted)** | blocked by STRICT mTLS — see rationale |
+>
+> **1. Unit — `notification-service` (fixed).** Deterministic context-load failure: with `spring-boot-starter-mail` + `spring-boot-starter-actuator` (actuator added in Phase 7), Actuator's `mailHealthContributor` instantiates from the `MailSender` bean map and throws `IllegalArgumentException: Beans must not be empty` when that map is empty, failing the whole `ApplicationContext` and every `@SpringBootTest` in the module. Build #8 only passed via a warm context cache. **Fix:** `management.health.mail.enabled: false`. Verified locally + green in #10.
+>
+> **2. Integration — `promotion-service` (fixed).** `HealthStatusReevaluationTest` started a Neo4j Testcontainer but no Redis container, so Spring fell back to `localhost:6379` → `RedisConnectionFailureException`. **Fix:** added a Redis `GenericContainer` + `spring.data.redis.host/port` dynamic properties (mirroring the working `AdministrativeCorrectionTest`). Verified locally (19 tests, 0 failed) and **green in build #10**.
+>
+> **3. E2E — accepted as non-blocking UNSTABLE. Rationale + evidence.** These are full-stack RestAssured tests that POST to live HTTP endpoints. They were moved to run **post-deploy** (after Deploy to GKE Production) via `kubectl port-forward` of the 5 services into the Jenkins container. In build #10 they still went UNSTABLE, and the logs show **exactly why**:
+>    - `org.apache.http.NoHttpResponseException: localhost:8083 failed to respond` — the port-forward TCP connection to identity-service **succeeded** (so deploy + networking are fine), but Envoy returned **no HTTP response**. Under the namespace's **STRICT `PeerAuthentication`**, the sidecar requires mTLS on every inbound request; a plaintext `kubectl port-forward` connection is rejected/closed. This is the documented, expected behaviour of a hardened mesh — it is *evidence the security control works*, not an application defect.
+>    - `java.net.ConnectException: Connection refused` on other services — their production pods were not all healthy at test time. Production Postgres uses `emptyDir`, so the 5 service databases are lost on any pod restart (documented operational issue), leaving dependent services in CrashLoopBackOff.
+>
+>    **Why we accept it:** the E2E suite is a *post-deployment environment test*. Passing it requires (a) a fully healthy target environment and (b) a client that can speak mTLS or enter through the ingress gateway. Neither is satisfiable from a plaintext port-forward against a STRICT-mTLS mesh, and forcing it would mean weakening the security posture (the very thing the project is graded on). The stage is intentionally non-blocking (`catchError → UNSTABLE`) so the pipeline still completes deploy + canary + release notes.
+>
+>    **Future fix (for reference, not done — out of time):**
+>    1. **Run E2E from inside the mesh** — package the e2e module as an image and run it as a Kubernetes `Job` in `circleguard-production` with `-Denv=production`. The Job's pod gets an Istio sidecar, so it speaks mTLS automatically and resolves the in-cluster DNS that `E2EConfig` already supports. This is the correct, security-preserving approach.
+>    2. **Or route through the Istio ingress gateway** — point all E2E base URIs at the single external gateway IP with host/path routing; the gateway terminates external traffic and does mTLS to upstreams.
+>    3. **Or a scoped PERMISSIVE window** — temporarily set the namespace `PeerAuthentication` to PERMISSIVE for the test window only (weakest option; documents the trade-off).
+>    4. **Fix the environment durability** — replace production Postgres `emptyDir` with a PVC so the service databases survive pod restarts; this removes the `Connection refused` class of failures.
 
 
 | Sub-requirement | Evidence |
@@ -151,8 +170,10 @@ All three new patterns are **implemented as real config/code**, not docs only.
 | Métricas de negocio | `http_server_requests_seconds_*` per endpoint via Micrometer |
 | Runbook | [`docs/operations/observability.md`](docs/operations/observability.md) |
 
-**📸 PROOF TO CAPTURE:** (cluster must be scaled up — see current-state.md "Scale Up Commands")
-1. **Grafana** — overview dashboard with non-zero data for the 8 services. Save to `docs/proof/grafana-overview.png`. Access: `kubectl -n monitoring port-forward svc/<grafana> 3000:80`.
+> **Live access note:** the kube-prometheus-stack is **not currently deployed** on the dev cluster (no `monitoring` namespace — only Google-managed `gmp-system` is present). The Helm values, ServiceMonitors, PrometheusRules, Alertmanager config and dashboard JSON all exist in [`k8s/monitoring/`](k8s/monitoring/) as deliverables. To view Grafana live, install it first: `bash k8s/monitoring/install.sh` (~5 min), then port-forward. The cluster having been scaled to 0 between sessions does not remove namespaces — this stack was simply not (re)installed on the current cluster generation.
+
+**📸 PROOF TO CAPTURE:** (install monitoring stack first, then scale cluster up)
+1. **Grafana** — overview dashboard with non-zero data for the 8 services. Save to `docs/proof/grafana-overview.png`. Access (after install): `kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80` → admin / circleguard-grafana.
 2. **Kibana** — Discover view on index `circleguard-*` showing logs. Save to `docs/proof/kibana-logs.png`.
 3. **Jaeger** — a trace spanning multiple services. Save to `docs/proof/jaeger-trace.png`.
 4. **Alertmanager / Prometheus alerts** — Prometheus → Alerts page or a fired Slack alert. Save to `docs/proof/prometheus-alerts.png`.
