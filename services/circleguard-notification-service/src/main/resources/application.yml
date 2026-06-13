@@ -18,6 +18,15 @@ spring:
           starttls:
             enable: false
 
+management:
+  health:
+    # The Actuator mail health indicator instantiates a MailSender-backed
+    # contributor at context startup; when no MailSender bean is present it
+    # fails with "Beans must not be empty" and the whole context fails to load
+    # (breaks @SpringBootTest). Mail reachability is not a required signal here.
+    mail:
+      enabled: false
+
 auth:
   api:
     url: ${AUTH_API_URL:http://localhost:8180}
