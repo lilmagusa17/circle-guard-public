@@ -30,6 +30,7 @@ Repository: github.com/lilmagusa17/circle-guard-public
 | CI/CD | Jenkins, SonarQube, Trivy |
 | Infrastructure | Terraform, GCP Secret Manager, External Secrets Operator |
 | Observability | Prometheus, Grafana, ELK Stack, Jaeger, Kiali |
+| Chaos Engineering | Chaos Mesh (bonus) |
 
 ---
 
@@ -57,11 +58,12 @@ Repository: github.com/lilmagusa17/circle-guard-public
 | 3 | Service Mesh (Istio) BONUS | Complete | Bonus |
 | 4 | CI/CD Avanzado | Complete | 15% |
 | 5 | Design Patterns | Complete | 10% |
-| 6 | Testing Enhancement | In Progress | 15% |
-| 7 | Observability | In Progress | 10% |
+| 6 | Testing Enhancement | Complete | 15% |
+| 7 | Observability | Complete | 10% |
 | 8 | Security | Complete | 5% |
 | 9 | Change Management | Complete | 5% |
 | 10 | Documentation & Presentation | Complete | 10% |
+| — | Chaos Engineering BONUS | Complete | Bonus |
 
 ---
 
@@ -195,7 +197,24 @@ Checkout → Build → SonarQube → Tests → Trivy → Docker Push → Deploy
 
 ---
 
-## Slide 12 — Cost Analysis
+## Slide 12 — Chaos Engineering (Bonus)
+
+**Tool:** Chaos Mesh on `circleguard-dev`. Load generator: in-cluster `fortio`.
+Validates the Istio resilience layer (circuit breakers + retries) under real faults.
+
+| Experiment | Fault | Result | Evidence |
+|------------|-------|--------|----------|
+| 1 — Pod kill | `PodChaos` kill auth-service | ✅ auto-recovered ~20s | K8s recreated the pod |
+| 2 — Network delay | 500ms delay form-service | ✅ degraded, no loss | avg 15ms→1363ms; retries visibly active (~2–3× delay) |
+| 3 — CPU stress | 4 workers @100% promotion-service | ✅ stayed up | avg 42ms→648ms; 200/200 OK, 0 errors |
+
+**Key finding:** the system **degrades gracefully** under every fault — zero dropped requests, zero 5xx — trading latency for availability, exactly as the Istio resilience config intends. Retry amplification under network delay is direct proof the retry policy is engaged.
+
+*[Detail: docs/chaos-results.md — manifests in tests/chaos/]*
+
+---
+
+## Slide 13 — Cost Analysis
 
 *[Bar chart: cost per environment per month]*
 
@@ -213,7 +232,7 @@ Checkout → Build → SonarQube → Tests → Trivy → Docker Push → Deploy
 
 ---
 
-## Slide 13 — Lessons Learned
+## Slide 14 — Lessons Learned
 
 1. **Istio probe rewriting is a hidden trap** — tcpSocket probes become HTTP probes after sidecar injection; services without `/actuator/health` fail readiness. Solution: use tcpSocket from the start.
 
@@ -233,7 +252,7 @@ Checkout → Build → SonarQube → Tests → Trivy → Docker Push → Deploy
 
 ---
 
-## Slide 14 — Demo
+## Slide 15 — Demo
 
 *[Live demo or recorded demo video]*
 
@@ -248,7 +267,7 @@ Demo agenda:
 
 ---
 
-## Slide 15 — Q&A
+## Slide 16 — Q&A
 
 Questions?
 

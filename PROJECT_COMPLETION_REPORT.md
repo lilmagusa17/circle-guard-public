@@ -72,7 +72,7 @@ All three new patterns are **implemented as real config/code**, not docs only.
 
 ## 3. CI/CD Avanzado (15%) ✅
 
-**Master pipeline ran end-to-end** — latest is build `circleguard-master #10` (UNSTABLE, completed): Checkout → Build → SonarQube → Unit → Integration → Coverage → Trivy → Docker Push → **Prod Approval** → Deploy to GKE Production → **E2E (post-deploy)** → Canary Deploy → **Canary Approval** → Canary Promote → Generate Release Notes → End. Both manual gates were approved, the release deployed to production, and the GitHub Release was generated. Screenshots: [`screenshots/final_project/master_integration_tests.png`](screenshots/final_project/master_integration_tests.png), [`screenshots/final_project/master_e2e_tests.png`](screenshots/final_project/master_e2e_tests.png).
+**Master pipeline ran end-to-end** — latest is build `circleguard-master #10` (UNSTABLE, completed): Checkout → Build → SonarQube → Unit → Integration → Coverage → Trivy → Docker Push → **Prod Approval** → Deploy to GKE Production → **E2E (post-deploy)** → Canary Deploy → **Canary Approval** → Canary Promote → Generate Release Notes → End. Both manual gates were approved, the release deployed to production, and the GitHub Release was generated. Proof: [`screenshots/final_project/jenkins_dashboard.png`](screenshots/final_project/jenkins_dashboard.png), SonarQube [`sonarqube_dashboard.png`](screenshots/final_project/sonarqube_dashboard.png) / [`sonarqube_detail_newcode.png`](screenshots/final_project/sonarqube_detail_newcode.png). The per-stage build #10 Stage View can be re-captured from Jenkins (http://localhost:8090 → circleguard-master #10) if a stage-level screenshot is needed.
 
 > **Pipeline test-stage analysis (final, build #10).** Build #10 ran the master pipeline **end-to-end to completion** with result **UNSTABLE**: both manual gates (Prod Approval, Canary Approval) were approved, the release deployed to `circleguard-production`, the canary ran, and the **Release Notes / GitHub Release were generated**. Stage-by-stage:
 >
@@ -172,8 +172,8 @@ All three new patterns are **implemented as real config/code**, not docs only.
 
 > **Live access note:** the kube-prometheus-stack is **not currently deployed** on the dev cluster (no `monitoring` namespace — only Google-managed `gmp-system` is present). The Helm values, ServiceMonitors, PrometheusRules, Alertmanager config and dashboard JSON all exist in [`k8s/monitoring/`](k8s/monitoring/) as deliverables. To view Grafana live, install it first: `bash k8s/monitoring/install.sh` (~5 min), then port-forward. The cluster having been scaled to 0 between sessions does not remove namespaces — this stack was simply not (re)installed on the current cluster generation.
 
-**📸 PROOF TO CAPTURE:** (install monitoring stack first, then scale cluster up)
-1. **Grafana** — overview dashboard with non-zero data for the 8 services. Save to `docs/proof/grafana-overview.png`. Access (after install): `kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80` → admin / circleguard-grafana.
+**📸 PROOF:**
+1. **Grafana — captured** ✅ [`screenshots/final_project/grafana_mesh.png`](screenshots/final_project/grafana_mesh.png): live Istio Mesh Dashboard (Prometheus datasource) showing 14.8 req/s, per-service P50/P90/P99 latency and success rate (gateway + file 100%, others reflecting the CrashLoop from emptyDir-DB loss). Access: `kubectl port-forward svc/grafana 3000:3000 -n istio-system`. The custom 8-service dashboard JSON (kube-prometheus-stack) is in `k8s/monitoring/dashboards/` for the optional install path.
 2. **Kibana** — Discover view on index `circleguard-*` showing logs. Save to `docs/proof/kibana-logs.png`.
 3. **Jaeger** — a trace spanning multiple services. Save to `docs/proof/jaeger-trace.png`.
 4. **Alertmanager / Prometheus alerts** — Prometheus → Alerts page or a fired Slack alert. Save to `docs/proof/prometheus-alerts.png`.

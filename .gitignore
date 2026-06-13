@@ -67,3 +67,6 @@ Final Ingesoft V.md
 terraform.rc
 # Keep lock files — they pin provider versions
 !**/.terraform.lock.hcl
+
+.claude
+CLAUDE.md
