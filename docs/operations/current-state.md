@@ -2,7 +2,7 @@
 
 Live record of what is actually deployed. Update this file every time infrastructure changes.
 
-**Last updated:** 2026-06-09
+**Last updated:** 2026-06-12
 
 ---
 
@@ -77,6 +77,8 @@ Databases: `circleguard_{auth,dashboard,form,promotion,identity}` created in eac
 | Phase 8 — Security | 🟡 In progress | RBAC+AuthorizationPolicy+cert-manager+TLS+Trivy CronJob+security docs done; 8.1/8.2 (ESO verification + plaintext removal) need cluster access |
 | Phase 9 — Change Mgmt | 🟢 Done | change-management, rollback, versioning docs complete; semver.sh already complete |
 | Phase 10 — Docs | 🟢 Done | All diagrams, README, operations index, costs, test-results, releases index, video script, slides, lessons learned |
+| BONUS — Service Mesh (Istio) | 🟢 Done | mTLS STRICT, canary, circuit breakers, retries, Kiali/Jaeger (Phase 3) |
+| BONUS — Chaos Engineering | 🟢 Done | Chaos Mesh on `circleguard-dev`; 3 experiments (pod-kill, net-delay, CPU-stress) passed. `tests/chaos/`, `docs/chaos-results.md` |
 
 ## Scale Up Commands (before working)
 
